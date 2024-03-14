@@ -1,0 +1,16 @@
+<div class="container section">
+    <h2>Accessory Details</h2>
+    <img class="icon" src="{$basePath}/img/more.svg" alt="Accessory Details Icon">
+</div>
+<div class="container space-between">
+    <label for="name">Name:</label>
+    <input type="text" name="name" id="name" value="{$name}">
+</div>
+<div class="container space-between">
+    <label for="type">Type:</label>
+    <select name="type" id="type">
+        <option value="audio" {$type->audio}>Audio</option>
+        <option value="video" {$type->video}>Video</option>
+        <option value="input" {$type->input}>Input</option>
+    </select>
+</div>

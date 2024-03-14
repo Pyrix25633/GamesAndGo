@@ -46,10 +46,8 @@ CREATE TABLE IF NOT EXISTS Accessories (
 CREATE TABLE IF NOT EXISTS Guides (
     id INT NOT NULL,
     title VARCHAR(56) NOT NULL,
-    videogameId INT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE (title),
-    FOREIGN KEY (videogameId) REFERENCES Videogames(id),
     FOREIGN KEY (id) REFERENCES Products(id)
 );
 
@@ -80,8 +78,7 @@ CREATE TABLE IF NOT EXISTS Customers (
     phoneNumber BIGINT NOT NULL,
     emailAddress VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (id) REFERENCES Users(id),
-    FOREIGN KEY (loyaltyCardId) REFERENCES LoyaltyCards(id)
+    FOREIGN KEY (id) REFERENCES Users(id)
 );
 
 CREATE TABLE IF NOT EXISTS Sellers (
@@ -93,7 +90,7 @@ CREATE TABLE IF NOT EXISTS Sellers (
     phoneNumber BIGINT NOT NULL,
     emailAddress VARCHAR(64) NOT NULL,
     code INT NOT NULL,
-    role ENUM('SHOP_ASSISTANT', 'WAREHOUSE_MAN'),
+    role ENUM('SHOP_ASSISTANT', 'WAREHOUSE_MAN') NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (id) REFERENCES Users(id)
 );

@@ -29,65 +29,8 @@
             $this->passwordHash = $passwordHash;
         }
 
-        static function formNew(string $imgPath): string {
-            return '
-                <div class="container section">
-                    <h2>Personal Details</h2>
-                    <img class="icon" src="' . $imgPath . 'img/personal-details.svg" alt="Personal Details Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="name">Name:</label>
-                    <input type="text" name="name" id="name">
-                </div>
-                <div class="container space-between">
-                    <label for="surname">Surname:</label>
-                    <input type="text" name="surname" id="surname">
-                </div>
-                <div class="container space-between">
-                    <label for="gender">Gender:</label>
-                    <select name="gender" id="gender">
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                <div class="container space-between">
-                    <label for="date-of-birth">Date of Birth:</label>
-                    <input type="date" name="date-of-birth" id="date-of-birth">
-                </div>
-                <div class="container space-between">
-                    <label for="document-state">Document State:</label>
-                    <input class="small" type="text" name="document-state" id="document-state">
-                </div>
-                <div class="container space-between">
-                    <label for="document-type">Document Type:</label>
-                    <select name="document-type" id="document-type">
-                        <option value="id">ID</option>
-                        <option value="password">Passport</option>
-                        <option value="driving-license">Driving License</option>
-                    </select>
-                </div>
-                <div class="container space-between">
-                    <label for="document-number">Document Number:</label>
-                    <input type="text" name="document-number" id="document-number">
-                </div>
-                <div class="container section">
-                    <h2>Credentials</h2>
-                    <img class="icon" src="' . $imgPath . 'img/credentials.svg" alt="Credentials Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="username">Username:</label>
-                    <input type="text" name="username" id="username">
-                </div>
-                <div class="container space-between">
-                    <label for="password">Password:</label>
-                    <input type="password" name="password" id="password">
-                </div>
-                <div class="container space-between">
-                    <label for="confirm-password">Confirm password:</label>
-                    <input type="password" name="confirm-password" id="confirm-password">
-                </div>
-            ';
+        static function formNew(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/user.html');
         }
 
         static function userFromForm(Validator $validator, UserType $userType): User {
@@ -118,7 +61,7 @@
             $formattedDateOfBirth = $this->dateOfBirth->format('Y-m-d');
             $statement->bind_param("ssssssss", $this->name, $this->surname, $this->username, $this->password, $formattedDateOfBirth,
                 $this->documentState, $documentType, $this->documentNumber);
-            if(!$statement->execute()) throw new UnprocessableContentResponse();
+            $statement->execute();
             $this->id = $connection->insert_id;
             $statement->close();
         }
@@ -168,41 +111,18 @@
             $this->loyaltyCardId = $loyaltyCardId;
         }
 
-        static function formNew(string $imgPath): string {
-            return parent::formNew($imgPath) . '
-                <div class="container section">
-                    <h2>Home Address</h2>
-                    <img class="icon" src="' . $imgPath . 'img/home-address.svg" alt="Home Address Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="street-type">Street Type:</label>
-                    <input class="medium" type="text" name="street-type" id="street-type">
-                </div>
-                <div class="container space-between">
-                    <label for="street-name">Street Name:</label>
-                    <input type="text" name="street-name" id="street-name">
-                </div>
-                <div class="container space-between">
-                    <label for="house-number">House Number:</label>
-                    <input class="small" type="text" name="house-number" id="house-number">
-                </div>
-                <div class="container section">
-                    <h2>Contacts</h2>
-                    <img class="icon" src="' . $imgPath . 'img/contacts.svg" alt="Contacts Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="phone-number-prefix">Phone Number Prefix:</label>
-                    <input class="small" type="tel" name="phone-number-prefix" id="phone-number-prefix">
-                </div>
-                <div class="container space-between">
-                    <label for="phone-number">Phone Number:</label>
-                    <input type="tel" name="phone-number" id="phone-number">
-                </div>
-                <div class="container space-between">
-                    <label for="email-address">Email Address:</label>
-                    <input type="email" name="email-address" id="email-address">
-                </div>
-            ';
+        static function formNew(): string {
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH. '/forms/customer.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Customer') as $property => $value)
+                $form = str_replace('{$' . $property . '}', '', $form);
+            $form = str_replace('{$gender->male}', '', $form);
+            $form = str_replace('{$gender->female}', '', $form);
+            $form = str_replace('{$gender->other}', '', $form);
+            $form = str_replace('{$documentType->id}', '', $form);
+            $form = str_replace('{$documentType->passport}', '', $form);
+            $form = str_replace('{$documentType->drivingLicense}', '', $form);
+            return $form;
         }
 
         static function fromForm(Validator &$validator): Customer {
@@ -229,7 +149,7 @@
                 $statement = $connection->prepare($sql);
                 $statement->bind_param("issiiis", $this->id, $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
                     $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress);
-                if(!$statement->execute()) throw new UnprocessableContentResponse();
+                $statement->execute();
                 $statement->close();
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {

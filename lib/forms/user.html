@@ -1,0 +1,56 @@
+<div class="container section">
+    <h2>Personal Details</h2>
+    <img class="icon" src="{$basePath}/img/personal-details.svg" alt="Personal Details Icon">
+</div>
+<div class="container space-between">
+    <label for="name">Name:</label>
+    <input type="text" name="name" id="name" value="{$name}">
+</div>
+<div class="container space-between">
+    <label for="surname">Surname:</label>
+    <input type="text" name="surname" id="surname" value="{$surname}">
+</div>
+<div class="container space-between">
+    <label for="gender">Gender:</label>
+    <select name="gender" id="gender">
+        <option value="male" {$gender->male}>Male</option>
+        <option value="female" {$gender->female}>Female</option>
+        <option value="other" {$gender->other}>Other</option>
+    </select>
+</div>
+<div class="container space-between">
+    <label for="date-of-birth">Date of Birth:</label>
+    <input type="date" name="date-of-birth" id="date-of-birth" value="{$dateOfBirth}">
+</div>
+<div class="container space-between">
+    <label for="document-state">Document State:</label>
+    <input class="small" type="text" name="document-state" id="document-state" value="{$documentState}">
+</div>
+<div class="container space-between">
+    <label for="document-type">Document Type:</label>
+    <select name="document-type" id="document-type">
+        <option value="id" {$documentType->id}>ID</option>
+        <option value="password" {$documentType->passport}>Passport</option>
+        <option value="driving-license" {$documentType->drivingLicense}>Driving License</option>
+    </select>
+</div>
+<div class="container space-between">
+    <label for="document-number">Document Number:</label>
+    <input type="text" name="document-number" id="document-number" value="{$documentNumber}">
+</div>
+<div class="container section">
+    <h2>Credentials</h2>
+    <img class="icon" src="{$basePath}/img/credentials.svg" alt="Credentials Icon">
+</div>
+<div class="container space-between">
+    <label for="username">Username:</label>
+    <input type="text" name="username" id="username" value="{$username}">
+</div>
+<div class="container space-between">
+    <label for="password">Password:</label>
+    <input type="password" name="password" id="password">
+</div>
+<div class="container space-between">
+    <label for="confirm-password">Confirm password:</label>
+    <input type="password" name="confirm-password" id="confirm-password">
+</div>

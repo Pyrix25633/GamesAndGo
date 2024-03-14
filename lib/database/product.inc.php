@@ -16,29 +16,16 @@
             $this->availableQuantity = $availableQuantity;
         }
 
-        static function formNew(string $imgPath): string {
-            return '
-                <div class="container section">
-                    <h2>Product Details</h2>
-                    <img class="icon" src="' . $imgPath . 'img/product-details.svg" alt="Personal Details Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="code">Code:</label>
-                    <input type="number" name="code" id="code">
-                </div>
-                <div class="container space-between">
-                    <label for="price-in-cents">Price (cents):</label>
-                    <input class="medium" type="number" name="price-in-cents" id="price-in-cents">
-                </div>
-                <div class="container space-between">
-                    <label for="discount">Discount (%):</label>
-                    <input class="small" type="number" name="discount" id="discount">
-                </div>
-                <div class="container space-between">
-                    <label for="available-quantity">Available Quantity:</label>
-                    <input class="small" type="number" name="available-quantity" id="available-quantity">
-                </div>
-            ';
+        static function tableGroups(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/product-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/product-headers.html');
+        }
+
+        static function formNew(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/product.html');
         }
 
         static function productFromForm(Validator $validator): Product {
@@ -59,9 +46,36 @@
             $statement = $connection->prepare($sql);
             $formattedProductType = $this->productType->toMysqlString();
             $statement->bind_param("isiii", $this->code, $formattedProductType, $this->priceInCents, $this->discount, $this->availableQuantity);
-            if(!$statement->execute()) throw new UnprocessableContentResponse();
+            $statement->execute();
             $this->id = $connection->insert_id;
             $statement->close();
+        }
+
+        static function productSelectNumberOfPages(mysqli $connection, string $table): int {
+            try {
+                $sql = "
+                    SELECT COUNT(*) AS records
+                    FROM " . $table . ";
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                $pages = intdiv($row['records'], Settings::RECORDS_PER_PAGE);
+                $statement->close();
+                return $pages;
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function fromRow(array $row): Product {
+            return new Product($row['id'],
+                               $row['code'],
+                               ProductType::fromMysqlString($row['productType']),
+                               $row['priceInCents'],
+                               $row['discount'],
+                               $row['availableQuantity']);
         }
     }
 
@@ -76,38 +90,22 @@
             $this->gameTypes = $gameTypes;
         }
 
-        static function formNew(string $imgPath): string {
-            return parent::formNew($imgPath) . '
-                <div class="container section">
-                    <h2>Console Details</h2>
-                    <img class="icon" src="' . $imgPath . 'img/more.svg" alt="Product Details Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="name">Name:</label>
-                    <input type="text" name="name" id="name">
-                </div>
-                <div class="container">
-                    <fieldset>
-                        <legend>Game Types:</legend>
-                        <div class="container no-margin">
-                            <label for="game-types-legacy">Legacy</label>
-                            <input type="checkbox" id="game-types-legacy" name="game-types-legacy">
-                        </div>
-                        <div class="container no-margin">
-                            <label for="game-types-cd">CD</label>
-                            <input type="checkbox" id="game-types-cd" name="game-types-cd">
-                        </div>
-                        <div class="container no-margin">
-                            <label for="game-types-dvd">DVD</label>
-                            <input type="checkbox" id="game-types-dvd" name="game-types-dvd">
-                        </div>
-                        <div class="container no-margin">
-                            <label for="game-types-digital">DIGITAL</label>
-                            <input type="checkbox" id="game-types-digital" name="game-types-digital">
-                        </div>
-                    </fieldset>
-                </div>
-            ';
+        static function tableGroups(): string {
+            return parent::tableGroups() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/console-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return parent::tableHeaders() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/console-headers.html');
+        }
+
+        static function formNew(): string {
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH. '/forms/console.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Console') as $property => $value)
+                $form = str_replace('{$' . $property . '}', '', $form);
+            foreach(get_class_vars('GameTypes') as $property => $value)
+                $form = str_replace('{$gameTypes->' . $property . '}', '', $form);
+            return $form;
         }
 
         static function fromForm(Validator $validator): Console {
@@ -127,11 +125,44 @@
                 $statement = $connection->prepare($sql);
                 $formattedGameTypes = $this->gameTypes->toMysqlString();
                 $statement->bind_param("iss", $this->id, $this->name, $formattedGameTypes);
-                if(!$statement->execute()) throw new UnprocessableContentResponse();
+                $statement->execute();
                 $statement->close();
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
                 $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        static function selectNumberOfPages(mysqli $connection): int {
+            return parent::productSelectNumberOfPages($connection, 'Consoles');
+        }
+
+        static function fromRow(array $row): Console {
+            return new Console(parent::fromRow($row), $row['name'], GameTypes::fromMysqlString($row['gameTypes']));
+        }
+
+        static function selectPage(mysqli $connection, int $page): array {
+            try {
+                $sql = "
+                    SELECT P.id AS id, code, productType, price * 100 AS priceInCents, discount, availableQuantity,
+                        name, gameTypes
+                    FROM Products as P
+                    INNER JOIN Consoles as C
+                    ON C.id = P.id
+                    LIMIT ?, ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $offset = $page * Settings::RECORDS_PER_PAGE;
+                $statement->bind_param("ii", $offset, Settings::RECORDS_PER_PAGE);
+                $statement->execute();
+                $result = $statement->get_result();
+                while($row = $result->fetch_assoc())
+                    $consoles[] = Console::fromRow($row);
+                $statement->close();
+                return $consoles;
+            } catch(mysqli_sql_exception $_) {
+                echo $_->getMessage();
                 throw new UnprocessableContentResponse();
             }
         }
@@ -150,25 +181,20 @@
             $this->releaseYear = $releaseYear;
         }
 
-        static function formNew(string $imgPath): string {
-            return parent::formNew($imgPath) . '
-                <div class="container section">
-                    <h2>Videogame Details</h2>
-                    <img class="icon" src="' . $imgPath . 'img/more.svg" alt="Videogame Details Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="title">Title:</label>
-                    <input type="text" name="title" id="title">
-                </div>
-                <div class="container space-between">
-                    <label for="plot">Plot:</label>
-                    <textarea name="plot" id="plot"></textarea>
-                </div>
-                <div class="container space-between">
-                    <label for="release-year">Release Year:</label>
-                    <input class="medium" type="number" name="release-year" id="release-year">
-                </div>
-            ';
+        static function tableGroups(): string {
+            return parent::tableGroups() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/videogame-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return parent::tableHeaders() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/videogame-headers.html');
+        }
+
+        static function formNew(): string {
+            $form = parent::formNew(Settings::LIB_ABSOLUTE_PATH) . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/videogame.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Videogame') as $property => $value)
+                $form = str_replace('{$' . $property . '}', '', $form);
+            return $form;
         }
 
         static function fromForm(Validator $validator): Videogame {
@@ -190,13 +216,17 @@
                 ";
                 $statement = $connection->prepare($sql);
                 $statement->bind_param("issi", $this->id, $this->title, $this->plot, $this->releaseYear);
-                if(!$statement->execute()) throw new UnprocessableContentResponse();
+                $statement->execute();
                 $statement->close();
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
                 $connection->rollback();
                 throw new UnprocessableContentResponse();
             }
+        }
+
+        static function selectNumberOfPages(mysqli $connection): int {
+            return parent::productSelectNumberOfPages($connection, 'Videogames');
         }
     }
 
@@ -211,25 +241,22 @@
             $this->type = $type;
         }
 
-        static function formNew(string $imgPath): string {
-            return parent::formNew($imgPath) . '
-                <div class="container section">
-                    <h2>Accessory Details</h2>
-                    <img class="icon" src="' . $imgPath . 'img/more.svg" alt="Accessory Details Icon">
-                </div>
-                <div class="container space-between">
-                    <label for="name">Name:</label>
-                    <input type="text" name="name" id="name">
-                </div>
-                <div class="container space-between">
-                    <label for="type">Type:</label>
-                    <select name="type" id="type">
-                        <option value="audio">Audio</option>
-                        <option value="video">Video</option>
-                        <option value="input">Input</option>
-                    </select>
-                </div>
-            ';
+        static function tableGroups(): string {
+            return parent::tableGroups() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/accessory-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return parent::tableHeaders() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/accessory-headers.html');
+        }
+
+        static function formNew(): string {
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/accessory.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Accessory') as $property => $value)
+                $form = str_replace('{$' . $property . '}', '', $form);
+            foreach(AccessoryType::cases() as $accessoryType)
+                $form = str_replace('{$type->' . $accessoryType->value . '}', '', $form);
+            return $form;
         }
 
         static function fromForm(Validator $validator): Accessory {
@@ -251,7 +278,7 @@
                 $statement = $connection->prepare($sql);
                 $formattedType = $this->type->toMysqlString();
                 $statement->bind_param("iss", $this->id, $this->name, $formattedType);
-                if(!$statement->execute()) throw new UnprocessableContentResponse();
+                $statement->execute();
                 $statement->close();
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
@@ -259,17 +286,64 @@
                 throw new UnprocessableContentResponse();
             }
         }
+
+        static function selectNumberOfPages(mysqli $connection): int {
+            return parent::productSelectNumberOfPages($connection, 'Accessories');
+        }
     }
 
     class Guide extends Product {
         public string $title;
-        public int $videogameId;
 
-        function __construct(Product $product, string $title, int $videogameId) {
+        function __construct(Product $product, string $title) {
             foreach($product as $property => $value)
                 $this->{$property} = $value;
             $this->title = $title;
-            $this->videogameId = $videogameId;
+        }
+
+        static function tableGroups(): string {
+            return parent::tableGroups() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/guide-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return parent::tableHeaders() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/guide-headers.html');
+        }
+
+        static function formNew(): string {
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/guide.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Guide') as $property => $value)
+                $form = str_replace('{$' . $property . '}', '', $form);
+            return $form;
+        }
+
+        static function fromForm(Validator $validator): Guide {
+            $product = parent::productFromForm($validator);
+            return new Guide($product, $validator->getNonEmptyString('title'));
+        }
+
+        function insert(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::insert($connection);
+                $sql = "
+                    INSERT INTO Guides
+                    (id, title)
+                    VALUES (?, ?);
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param("is", $this->id, $this->title);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        static function selectNumberOfPages(mysqli $connection): int {
+            return parent::productSelectNumberOfPages($connection, 'Guides');
         }
     }
 
@@ -278,6 +352,10 @@
         case VIDEOGAME = 'videogame';
         case ACCESSORY = 'accessory';
         case GUIDE = 'guide';
+
+        static function formSelect(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/product-type.html');
+        }
 
         function toMysqlString(): string {
             return $this->name;

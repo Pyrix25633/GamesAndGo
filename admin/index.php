@@ -3,9 +3,8 @@
     require_once('../lib/utils.inc.php');
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
-    $settings = new Settings();
     try {
-        $connection = connect($settings);
+        $connection = connect();
         $userId = Auth::protect(['admin']);
     } catch(Response $error) {
         $error->send();

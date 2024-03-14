@@ -26,7 +26,7 @@
         </nav>
         <div class="panel box bottom-margin">
             <form action="./register.php" method="POST">
-                <?php echo Customer::formNew('../'); ?>
+                <?php echo Customer::formNew(); ?>
                 <div class="container section">
                     <h2>Submit</h2>
                     <img class="icon" src="../img/submit.svg" alt="Submit Icon">

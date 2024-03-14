@@ -5,9 +5,8 @@
     require_once('../lib/validation.inc.php');
     require_once('../lib/database/user.inc.php');
     require_once('../lib/auth.inc.php');
-    $settings = new Settings();
     try {
-        $connection = connect($settings);
+        $connection = connect();
         $validator = new Validator($_POST);
         $username = $validator->getNonEmptyString('username');
         $password = $validator->getNonEmptyString('password');

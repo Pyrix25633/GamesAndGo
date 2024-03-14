@@ -1,11 +1,12 @@
 <?php
     declare(strict_types = 1);
+    require_once('../../../lib/utils.inc.php');
     require_once('../../../lib/errors.inc.php');
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
     require_once('../../../lib/database/product.inc.php');
     try {
-        $userId = Auth::protect(['seller']);
+        Auth::protect(['seller']);
         $validator = new Validator($_GET);
         $productType = $validator->getProductType('product-type');
     } catch(Response $error) {
@@ -35,11 +36,11 @@
         <div class="panel box">
             <form action="./new.php" method="POST">
                 <?php
-                    $imgPath = '../../../';
                     switch($productType) {
-                        case ProductType::CONSOLE: echo Console::formNew($imgPath); break;
-                        case ProductType::VIDEOGAME: echo Videogame::formNew($imgPath); break;
-                        case ProductType::ACCESSORY: echo Accessory::formNew($imgPath); break;
+                        case ProductType::CONSOLE: echo Console::formNew(); break;
+                        case ProductType::VIDEOGAME: echo Videogame::formNew(); break;
+                        case ProductType::ACCESSORY: echo Accessory::formNew(); break;
+                        case ProductType::GUIDE: echo Guide::formNew(); break;
                     }
                 ?>
                 <input type="hidden" name="product-type" value="<?php echo $productType->value; ?>">

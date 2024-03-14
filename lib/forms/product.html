@@ -1,0 +1,21 @@
+<div class="container section">
+    <h2>Product Details</h2>
+    <img class="icon" src="{$basePath}/img/product-details.svg" alt="Personal Details Icon">
+</div>
+<input type="hidden" name="id" value="{$id}">
+<div class="container space-between">
+    <label for="code">Code:</label>
+    <input type="number" name="code" id="code" value="{$code}">
+</div>
+<div class="container space-between">
+    <label for="price-in-cents">Price (cents):</label>
+    <input class="medium" type="number" name="price-in-cents" id="price-in-cents" value="{$priceInCents}">
+</div>
+<div class="container space-between">
+    <label for="discount">Discount (%):</label>
+    <input class="small" type="number" name="discount" id="discount" value="{$discount}">
+</div>
+<div class="container space-between">
+    <label for="available-quantity">Available Quantity:</label>
+    <input class="small" type="number" name="available-quantity" id="available-quantity" value="{$availableQuantity}">
+</div>

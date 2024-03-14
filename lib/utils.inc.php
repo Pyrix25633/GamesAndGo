@@ -1,29 +1,51 @@
 <?php
-    declare(strict_types = 1);
-    const SETTINGS_FILE = __DIR__ . '/settings.json';
-
+    define('URL_ROOT_PATH', getUrlBasePath());
     class Settings {
-        public string $server;
-        public string $username;
-        public string $password;
-        public string $database;
-        public int $recordsPerPage;
-
-        function __construct() {
-            $file = fopen(SETTINGS_FILE, 'r');
-            $settings = json_decode(fread($file, filesize(SETTINGS_FILE)));
-            $this->server = $settings->server;
-            $this->username = $settings->username;
-            $this->password = $settings->password;
-            $this->database = $settings->database;
-            $this->recordsPerPage = $settings->recordsPerPage;
-        }
+        public const DB_SERVER = '127.0.0.1';
+        public const DB_USERNAME = 'root';
+        public const DB_PASSWORD = '';
+        public const DB_DATABASE = 'GamesAndGo';
+        public const AUTH_COOKIE_NAME = 'auth-token';
+        public const AUTH_COOKIE_DURATION = '14D';
+        public const AUTH_COOKIE_KEY = 'a28cvhiierbh1a4';
+        public const AUTH_COOKIE_METHOD = 'aes-256-ctr';
+        public const RECORDS_PER_PAGE = 15;
+        public const LIB_ABSOLUTE_PATH = __DIR__;
     }
 
-    function connect(Settings $settings): mysqli {
-        $connection = new mysqli($settings->server, $settings->username, $settings->password);
-        $connection->select_db($settings->database);
+    function getUrlBasePath(): string {
+        $path = dirname(__DIR__) . '\n';
+        while(!str_ends_with($path, 'htdocs'))
+            $path = dirname($path);
+        return str_replace($path, '', dirname(__DIR__));
+    }
+
+    function getFileContent(string $path): string {
+        $file = fopen($path, 'r');
+        $content = fread($file, filesize($path));
+        fclose($file);
+        return $content;
+    }
+
+    function connect(): mysqli {
+        $connection = new mysqli(Settings::DB_SERVER, Settings::DB_USERNAME, Settings::DB_PASSWORD);
+        $connection->select_db(Settings::DB_DATABASE);
         if($connection->connect_error != null) throw new InternalServerErrorResponse();
         return $connection;
+    }
+
+    class PageHelper {
+        public int $previousPage;
+        public int $nextPage;
+        public int $lastPage;
+
+        function __construct(int $page, int $pages) {
+            $this->previousPage = $page - 1;
+            if($this->previousPage < 0) $this->previousPage = 0;
+            $this->lastPage = $pages - 1;
+            if($this->lastPage < 0) $this->lastPage  = 0;
+            $this->nextPage = $page + 1;
+            if($this->nextPage > $this->lastPage) $this->nextPage = $this->lastPage;
+        }
     }
 ?>

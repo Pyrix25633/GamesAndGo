@@ -4,9 +4,8 @@
     require_once('../lib/errors.inc.php');
     require_once('../lib/validation.inc.php');
     require_once('../lib/database/user.inc.php');
-    $settings = new Settings();
     try {
-        $connection = connect($settings);
+        $connection = connect();
         $validator = new Validator($_POST);
         $customer = Customer::fromForm($validator);
         $customer->insert($connection);

@@ -5,16 +5,16 @@
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
     require_once('../../../lib/database/product.inc.php');
-    $settings = new Settings();
     try {
-        $userId = Auth::protect(['seller']);
-        $connection = connect($settings);
+        Auth::protect(['seller']);
+        $connection = connect();
         $validator = new Validator($_POST);
         $productType = $validator->getProductType('product-type');
         switch($productType) {
             case ProductType::CONSOLE: $product = Console::fromForm($validator); break;
             case ProductType::VIDEOGAME: $product = Videogame::fromForm($validator); break;
             case ProductType::ACCESSORY: $product = Accessory::fromForm($validator); break;
+            case ProductType::GUIDE: $product = Guide::fromForm($validator); break;
         }
         $product->insert($connection);
     } catch(Response $error) {

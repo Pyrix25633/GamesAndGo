@@ -3,10 +3,8 @@
     require_once('../lib/utils.inc.php');
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
-    $settings = new Settings();
     try {
-        $connection = connect($settings);
-        $userId = Auth::protect(['seller']);
+        Auth::protect(['seller']);
     } catch(Response $error) {
         $error->send();
     }
@@ -34,6 +32,7 @@
         </nav>
         <div class="panel box">
             <a href="./products/new">New Product</a>
+            <a href="./products/">View and Edit Products</a>
         </div>
     </body>
 </html>

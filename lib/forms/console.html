@@ -1,0 +1,29 @@
+<div class="container section">
+    <h2>Console Details</h2>
+    <img class="icon" src="{$basePath}/img/more.svg" alt="Product Details Icon">
+</div>
+<div class="container space-between">
+    <label for="name">Name:</label>
+    <input type="text" name="name" id="name" value="{$name}">
+</div>
+<div class="container">
+    <fieldset>
+        <legend>Game Types:</legend>
+        <div class="container no-margin">
+            <label for="game-types-legacy">Legacy</label>
+            <input type="checkbox" id="game-types-legacy" name="game-types-legacy" {$gameTypes->legacy}>
+        </div>
+        <div class="container no-margin">
+            <label for="game-types-cd">CD</label>
+            <input type="checkbox" id="game-types-cd" name="game-types-cd" {$gameTypes->cd}>
+        </div>
+        <div class="container no-margin">
+            <label for="game-types-dvd">DVD</label>
+            <input type="checkbox" id="game-types-dvd" name="game-types-dvd" {$gameTypes->dvd}>
+        </div>
+        <div class="container no-margin">
+            <label for="game-types-digital">DIGITAL</label>
+            <input type="checkbox" id="game-types-digital" name="game-types-digital" {$gameTypes->digital}>
+        </div>
+    </fieldset>
+</div>
