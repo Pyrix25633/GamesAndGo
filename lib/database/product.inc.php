@@ -69,6 +69,28 @@
             }
         }
 
+        static function selectPageResult(mysqli $connection, string $parameters, string $join, int $page): object {
+            try {
+                $sql = "
+                    SELECT P.id AS id, code, productType, price * 100 AS priceInCents, discount, availableQuantity,
+                        " . $parameters . "
+                    FROM Products as P
+                    " . $join . "
+                    LIMIT ?, ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $recordsPerPage = Settings::RECORDS_PER_PAGE;
+                $offset = $page * $recordsPerPage;
+                $statement->bind_param("ii", $offset, $recordsPerPage);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                return $result;
+            } catch(mysqli_sql_exception $_) {
+                throw new UnprocessableContentResponse();
+            }
+        }
+
         static function fromRow(array $row): Product {
             return new Product($row['id'],
                                $row['code'],
@@ -76,6 +98,20 @@
                                $row['priceInCents'],
                                $row['discount'],
                                $row['availableQuantity']);
+        }
+
+        function toTableRow(): string {
+            $row = getFileContent(Settings::LIB_ABSOLUTE_PATH. '/tables/product-row.html');
+            $price = $this->priceInCents / 100;
+            $row = str_replace('{$price}', number_format($price, 2), $row);
+            $finalPrice = $price * (100 - $this->discount) / 100;
+            $row = str_replace('{$finalPrice}', number_format($finalPrice, 2), $row);
+            return $row;
+        }
+
+        function toSellerTableRow(): string {
+            $row = $this->toTableRow();
+            return $row . '<td><a href="' . $this->id . '">Edit</a></td>';
         }
     }
 
@@ -99,7 +135,7 @@
         }
 
         static function formNew(): string {
-            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH. '/forms/console.html');
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/console.html');
             $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
             foreach(get_class_vars('Console') as $property => $value)
                 $form = str_replace('{$' . $property . '}', '', $form);
@@ -144,27 +180,28 @@
 
         static function selectPage(mysqli $connection, int $page): array {
             try {
-                $sql = "
-                    SELECT P.id AS id, code, productType, price * 100 AS priceInCents, discount, availableQuantity,
-                        name, gameTypes
-                    FROM Products as P
-                    INNER JOIN Consoles as C
-                    ON C.id = P.id
-                    LIMIT ?, ?;
-                ";
-                $statement = $connection->prepare($sql);
-                $offset = $page * Settings::RECORDS_PER_PAGE;
-                $statement->bind_param("ii", $offset, Settings::RECORDS_PER_PAGE);
-                $statement->execute();
-                $result = $statement->get_result();
+                $result = parent::selectPageResult($connection, 'name, gameTypes', 'INNER JOIN Consoles AS C ON C.id = P.id', $page);
                 while($row = $result->fetch_assoc())
-                    $consoles[] = Console::fromRow($row);
-                $statement->close();
+                    $consoles[] = self::fromRow($row);
                 return $consoles;
             } catch(mysqli_sql_exception $_) {
-                echo $_->getMessage();
                 throw new UnprocessableContentResponse();
             }
+        }
+
+        function toTableRow(): string {
+            $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/console-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'gameTypes':
+                        foreach($value as $gameType => $gameTypeValue)
+                            $row = str_replace('{$gameTypes->' . $gameType . '}', $gameTypeValue ? 'Yes' : 'No', $row);
+                        break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
         }
     }
 
@@ -228,6 +265,32 @@
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Videogames');
         }
+
+        static function fromRow(array $row): Videogame {
+            return new Videogame(parent::fromRow($row), $row['title'], $row['plot'], $row['releaseYear']);
+        }
+
+        static function selectPage(mysqli $connection, int $page): array {
+            try {
+                $result = parent::selectPageResult($connection, 'title, plot, releaseYear', 'INNER JOIN Videogames AS V ON V.id = P.id', $page);
+                while($row = $result->fetch_assoc())
+                    $videogames[] = self::fromRow($row);
+                return $videogames;
+            } catch(mysqli_sql_exception $_) {
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function toTableRow(): string {
+            $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/videogame-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
     }
 
     class Accessory extends Product {
@@ -290,6 +353,33 @@
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Accessories');
         }
+
+        static function fromRow(array $row): Accessory {
+            return new Accessory(parent::fromRow($row), $row['name'], AccessoryType::fromMysqlString($row['type']));
+        }
+
+        static function selectPage(mysqli $connection, int $page): array {
+            try {
+                $result = parent::selectPageResult($connection, 'name, type', 'INNER JOIN Accessories AS A ON A.id = P.id', $page);
+                while($row = $result->fetch_assoc())
+                    $accessories[] = self::fromRow($row);
+                return $accessories;
+            } catch(mysqli_sql_exception $_) {
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function toTableRow(): string {
+            $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/accessory-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'type': $row = str_replace('{$' . $property . '}', $value->name, $row); break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
     }
 
     class Guide extends Product {
@@ -344,6 +434,32 @@
 
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Guides');
+        }
+
+        static function fromRow(array $row): Guide {
+            return new Guide(parent::fromRow($row), $row['title']);
+        }
+
+        static function selectPage(mysqli $connection, int $page): array {
+            try {
+                $result = parent::selectPageResult($connection, 'title', 'INNER JOIN Guides AS G ON G.id = P.id', $page);
+                while($row = $result->fetch_assoc())
+                    $guides[] = self::fromRow($row);
+                return $guides;
+            } catch(mysqli_sql_exception $_) {
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function toTableRow(): string {
+            $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/guide-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
         }
     }
 

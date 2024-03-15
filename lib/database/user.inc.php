@@ -114,19 +114,24 @@
         static function formNew(): string {
             $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH. '/forms/customer.html');
             $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
-            foreach(get_class_vars('Customer') as $property => $value)
-                $form = str_replace('{$' . $property . '}', '', $form);
-            $form = str_replace('{$gender->male}', '', $form);
-            $form = str_replace('{$gender->female}', '', $form);
-            $form = str_replace('{$gender->other}', '', $form);
-            $form = str_replace('{$documentType->id}', '', $form);
-            $form = str_replace('{$documentType->passport}', '', $form);
-            $form = str_replace('{$documentType->drivingLicense}', '', $form);
+            foreach(get_class_vars('Customer') as $property => $value) {
+                switch($property) {
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$gender::' . $gender->name . '}', '', $form);
+                        break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$documentType::' . $documentType->name . '}', '', $form);
+                        break;
+                    default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
             return $form;
         }
 
         static function fromForm(Validator &$validator): Customer {
-            $user = User::userFromForm($validator, UserType::CUSTOMER);
+            $user = self::userFromForm($validator, UserType::CUSTOMER);
             return new Customer($user,
                                 $validator->getNonEmptyString('street-type'),
                                 $validator->getNonEmptyString('street-name'),

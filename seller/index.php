@@ -8,7 +8,6 @@
     } catch(Response $error) {
         $error->send();
     }
-    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -27,8 +27,13 @@
         case ProductType::GUIDE: $pages = Guide::selectNumberOfPages($connection, $settings); break;
     }
     $pageHelper = new PageHelper($page, $pages);
-    $basePath = '../..';
-    //$connection->close();
+    switch($productType) {
+        case ProductType::CONSOLE: $products = Console::selectPage($connection, $page); break;
+        case ProductType::VIDEOGAME: $products = Videogame::selectPage($connection, $page); break;
+        case ProductType::ACCESSORY: $products = Accessory::selectPage($connection, $page); break;
+        case ProductType::GUIDE: $products = Guide::selectPage($connection, $page); break;
+    }
+    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -66,10 +71,10 @@
                     <tr>
                         <?php
                             switch($productType) {
-                                case ProductType::CONSOLE: echo Console::tableGroups($basePath); break;
-                                case ProductType::VIDEOGAME: echo Videogame::tableGroups($basePath); break;
-                                case ProductType::ACCESSORY: echo Accessory::tableGroups($basePath); break;
-                                case ProductType::GUIDE: echo Guide::tableGroups($basePath); break;
+                                case ProductType::CONSOLE: echo Console::tableGroups(); break;
+                                case ProductType::VIDEOGAME: echo Videogame::tableGroups(); break;
+                                case ProductType::ACCESSORY: echo Accessory::tableGroups(); break;
+                                case ProductType::GUIDE: echo Guide::tableGroups(); break;
                             }
                         ?>
                         <th></th>
@@ -77,17 +82,21 @@
                     <tr>
                         <?php
                             switch($productType) {
-                                case ProductType::CONSOLE: echo Console::tableHeaders($basePath); break;
-                                case ProductType::VIDEOGAME: echo Videogame::tableHeaders($basePath); break;
-                                case ProductType::ACCESSORY: echo Accessory::tableHeaders($basePath); break;
-                                case ProductType::GUIDE: echo Guide::tableHeaders($basePath); break;
+                                case ProductType::CONSOLE: echo Console::tableHeaders(); break;
+                                case ProductType::VIDEOGAME: echo Videogame::tableHeaders(); break;
+                                case ProductType::ACCESSORY: echo Accessory::tableHeaders(); break;
+                                case ProductType::GUIDE: echo Guide::tableHeaders(); break;
                             }
                         ?>
                         <th>Edit</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php var_dump(Console::selectPage($connection, $page)); ?>
+                    <?php
+                        foreach($products as $product) {
+                            echo '<tr>' . $product->toSellerTableRow() . '</tr>';
+                        }
+                    ?>
                 </tbody>
                 <tfoot>
                     <tr>

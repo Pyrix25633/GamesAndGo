@@ -8,8 +8,8 @@
             $token['expiration'] = $expiration->getTimestamp();
             $json = json_encode($token);
             $cookie = Auth::encrypt($json);
-            setcookie(Settings::AUTH_COOKIE_NAME, $cookie, $expiration->getTimestamp(), Settings::URL_ROOT_PATH, "", false, true);
-            header('Location: ' . Settings::URL_ROOT_PATH . '/' . $type->value);
+            setcookie(Settings::AUTH_COOKIE_NAME, $cookie, $expiration->getTimestamp(), URL_ROOT_PATH, "", false, true);
+            header('Location: ' . URL_ROOT_PATH . '/' . $type->value);
         }
 
         static function protect(array $types): int {
