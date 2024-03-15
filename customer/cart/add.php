@@ -5,13 +5,14 @@
     require_once('../../lib/validation.inc.php');
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/cart.inc.php');
+    require_once('../../lib/database/user.inc.php');
     try {
-        $userId = Auth::protect(['customer']);
         $connection = connect();
+        $user = Auth::protect($connection, ['customer']);
         $validator = new Validator($_POST);
         $id = $validator->getPositiveInt('id');
         $quantity = $validator->getPositiveInt('quantity');
-        ProductOnCart::insert($connection, $userId, $id, $quantity);
+        ProductOnCart::insert($connection, $user->id, $id, $quantity);
     } catch(Response $error) {
         $connection->close();
         $error->send();

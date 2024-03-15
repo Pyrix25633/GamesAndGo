@@ -5,10 +5,11 @@
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
     require_once('../../lib/database/cart.inc.php');
+    require_once('../../lib/database/user.inc.php');
     try {
-        $userId = Auth::protect(['customer']);
         $connection = connect();
-        $products = CartProduct::selectAll($connection, $userId);
+        $user = Auth::protect($connection, ['customer']);
+        $products = CartProduct::selectAll($connection, $user->id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -54,6 +55,8 @@
                         foreach($products as $product) {
                             echo '<tr>' . $product->toTableRow() . '</tr>';
                         }
+                        if(sizeof($products) == 0)
+                            echo '<tr><td colspan="100">0 Products in Cart</td></tr>';
                     ?>
                 </tbody>
             </table>

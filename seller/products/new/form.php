@@ -5,13 +5,17 @@
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
     require_once('../../../lib/database/product.inc.php');
+    require_once('../../../lib/database/user.inc.php');
     try {
-        Auth::protect(['seller']);
+        $connection = connect();
+        Auth::protect($connection, ['seller']);
         $validator = new Validator($_GET);
         $productType = $validator->getProductType('product-type');
     } catch(Response $error) {
+        $connection->close();
         $error->send();
     }
+    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -1,8 +1,8 @@
 <?php
     class Auth {
-        static function login(int $id, UserType $type): void {
+        static function login(int $id, UserType $type, string $passwordHash): void {
             $token['id'] = $id;
-            $token['type'] = $type->value;
+            $token['passwordHash'] = $passwordHash;
             $expiration = new DateTime();
             $expiration->add(new DateInterval('P' . Settings::AUTH_COOKIE_DURATION));
             $token['expiration'] = $expiration->getTimestamp();
@@ -12,14 +12,16 @@
             header('Location: ' . URL_ROOT_PATH . '/' . $type->value);
         }
 
-        static function protect(array $types, UserType &$type = null): int {
+        static function protect(mysqli $connection, array $userTypes): User {
             if(!isset($_COOKIE[Settings::AUTH_COOKIE_NAME])) throw new UnauthorizedResponse();
             $cookie = Auth::decrypt($_COOKIE[Settings::AUTH_COOKIE_NAME]);
             $json = json_decode($cookie, true);
-            $type = $json['type'];
-            if(!in_array($type, $types)) throw new ForbiddenResponse();
+            $id = $json['id'];
+            $user = User::select($connection, $id);
+            if(!in_array($user->userType->value, $userTypes)) throw new ForbiddenResponse();
             if($json['expiration'] < (new DateTime())->getTimestamp()) throw new UnauthorizedResponse();
-            return $json['id'];
+            if($json['passwordHash'] != $user->passwordHash);
+            return $user;
         }
 
         static function encrypt(string $plaintext): string {

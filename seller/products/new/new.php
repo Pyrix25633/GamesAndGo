@@ -5,9 +5,10 @@
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
     require_once('../../../lib/database/product.inc.php');
+    require_once('../../../lib/database/user.inc.php');
     try {
-        Auth::protect(['seller']);
         $connection = connect();
+        Auth::protect($connection, ['seller']);
         $validator = new Validator($_POST);
         $productType = $validator->getProductType('product-type');
         switch($productType) {

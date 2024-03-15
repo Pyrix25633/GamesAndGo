@@ -6,13 +6,14 @@
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
     require_once('../../lib/database/cart.inc.php');
+    require_once('../../lib/database/user.inc.php');
     try {
-        $userId = Auth::protect(['customer']);
         $connection = connect();
+        $user = Auth::protect($connection, ['customer']);
         $validator = new Validator($_GET);
         $id = $validator->getPositiveInt('id');
-        $cartId = Cart::selectId($connection, $userId);
-        $product = CartProduct::select($connection, $id, $userId);
+        $cartId = Cart::selectId($connection, $user->id);
+        $product = CartProduct::select($connection, $id, $user->id);
     } catch(Response $error) {
         $connection->close();
         $error->send();

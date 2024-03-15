@@ -6,12 +6,15 @@
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
     require_once('../../lib/database/cart.inc.php');
+    require_once('../../lib/database/user.inc.php');
     try {
-        $userId = Auth::protect(['customer']);
         $connection = connect();
+        $user = Auth::protect($connection, ['customer']);
         $validator = new Validator($_POST);
         $id = $validator->getPositiveInt('id');
-        $product = CartProduct::select($connection, $id, $userId);
+        $product = ProductOnCart::select($connection, $id);
+        if($product->cartId != Cart::selectId($connection, $user->id))
+            throw new ForbiddenResponse();
         $product->delete($connection);
     } catch(Response $error) {
         $connection->close();

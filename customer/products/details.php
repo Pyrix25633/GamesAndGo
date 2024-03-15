@@ -5,9 +5,10 @@
     require_once('../../lib/validation.inc.php');
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
+    require_once('../../lib/database/user.inc.php');
     try {
-        Auth::protect(['customer']);
         $connection = connect();
+        Auth::protect($connection, ['customer']);
         $validator = new Validator($_GET);
         $id = $validator->getPositiveInt('id');
         $product = Product::select($connection, $id);

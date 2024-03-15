@@ -36,6 +36,25 @@
     }
 
     class ProductOnCart {
+        public int $id;
+        public int $productId;
+        public int $cartId;
+        public int $quantity;
+
+        function __construct(int $id, int $productId, int $cartId, int $quantity) {
+            $this->id = $id;
+            $this->productId = $productId;
+            $this->cartId = $cartId;
+            $this->quantity = $quantity;
+        }
+
+        static function fromRow(array $row): ProductOnCart {
+            return new ProductOnCart(intval($row['id']),
+                                     intval($row['productId']),
+                                     intval($row['cartId']),
+                                     intval($row['quantity']));
+        }
+
         static function insert(mysqli $connection, int $userId, int $productId, int $quantity): void {
             Cart::insertIgnore($connection, $userId);
             $cartId = Cart::selectId($connection, $userId);
@@ -47,6 +66,39 @@
                 ";
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('iii', $productId, $cartId, $quantity);
+                $statement->execute();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function select(mysqli $connection, int $id): ProductOnCart {
+            try {
+                $sql = "
+                    SELECT *
+                    FROM ProductsOnCarts
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse('id');
+                return self::fromRow($row);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        function delete(mysqli $connection): void {
+            try {
+                $sql = "
+                    DELETE FROM ProductsOnCarts
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $this->id);
                 $statement->execute();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
@@ -147,23 +199,9 @@
                 $statement->execute();
                 $result = $statement->get_result();
                 $row = $result->fetch_assoc();
-                if($row == null) throw new NotFoundResponse();
+                if($row == null) throw new NotFoundResponse('id');
                 if(intval($row['cartId']) != Cart::selectId($connection, $userId)) throw new ForbiddenResponse();
                 return self::fromRow($row);
-            } catch(mysqli_sql_exception $_) {
-                throw new InternalServerErrorResponse();
-            }
-        }
-
-        function delete(mysqli $connection): void {
-            try {
-                $sql = "
-                    DELETE FROM ProductsOnCarts
-                    WHERE id = ?;
-                ";
-                $statement = $connection->prepare($sql);
-                $statement->bind_param('i', $this->id);
-                $statement->execute();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }

@@ -3,11 +3,15 @@
     require_once('../lib/utils.inc.php');
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
+    require_once('../lib/database/user.inc.php');
     try {
-        Auth::protect(['customer']);
+        $connection = connect();
+        Auth::protect($connection, ['customer']);
     } catch(Response $error) {
+        $connection->close();
         $error->send();
     }
+    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">

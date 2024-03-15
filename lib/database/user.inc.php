@@ -71,7 +71,7 @@
                 $sql = "
                     SELECT id, userType, passwordHash
                     FROM Users
-                    WHERE username=?;
+                    WHERE username = ?;
                 ";
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('s', $username);
@@ -82,7 +82,42 @@
                 if($row == null) throw new NotFoundResponse('username');
                 $passwordHash = $row['passwordHash'];
                 if($passwordHash != hash('sha256', $password)) throw new UnauthorizedResponse('password');
-                Auth::login($row['id'], UserType::fromMysqlString($row['userType']));
+                Auth::login($row['id'], UserType::fromMysqlString($row['userType']), $row['passwordHash']);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function fromRow(array $row): User {
+            return new User(intval($row['id']),
+                            UserType::fromMysqlString($row['userType']),
+                            $row['name'],
+                            $row['surname'],
+                            Gender::fromMysqlString($row['gender']),
+                            new DateTime($row['dateOfBirth']),
+                            $row['documentState'],
+                            DocumentType::fromMysqlString($row['documentType']),
+                            $row['documentNumber'],
+                            $row['username'],
+                            null,
+                            $row['passwordHash']);
+        }
+
+        static function select(mysqli $connection, int $id): User {
+            try {
+                $sql = "
+                    SELECT *
+                    FROM Users
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                $statement->close();
+                if($row == null) throw new NotFoundResponse('username');
+                return self::fromRow($row);
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
