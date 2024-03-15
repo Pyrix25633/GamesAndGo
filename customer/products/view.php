@@ -13,22 +13,28 @@
         } catch(Response $_) {
             $page = 0;
         }
+        switch($productType) {
+            case ProductType::CONSOLE:
+                $pages = Console::selectNumberOfPages($connection);
+                $products = Console::selectPage($connection, $page); 
+                break;
+            case ProductType::VIDEOGAME:
+                $pages = Videogame::selectNumberOfPages($connection);
+                $products = Videogame::selectPage($connection, $page); 
+                break;
+            case ProductType::ACCESSORY:
+                $pages = Accessory::selectNumberOfPages($connection);
+                $products = Accessory::selectPage($connection, $page); 
+                break;
+            case ProductType::GUIDE:
+                $pages = Guide::selectNumberOfPages($connection);
+                $products = Guide::selectPage($connection, $page); 
+                break;
+        }
+        $pageHelper = new PageHelper($page, $pages);
     } catch(Response $error) {
         $connection->close();
         $error->send();
-    }
-    switch($productType) {
-        case ProductType::CONSOLE: $pages = Console::selectNumberOfPages($connection); break;
-        case ProductType::VIDEOGAME: $pages = Videogame::selectNumberOfPages($connection); break;
-        case ProductType::ACCESSORY: $pages = Accessory::selectNumberOfPages($connection); break;
-        case ProductType::GUIDE: $pages = Guide::selectNumberOfPages($connection); break;
-    }
-    $pageHelper = new PageHelper($page, $pages);
-    switch($productType) {
-        case ProductType::CONSOLE: $products = Console::selectPage($connection, $page); break;
-        case ProductType::VIDEOGAME: $products = Videogame::selectPage($connection, $page); break;
-        case ProductType::ACCESSORY: $products = Accessory::selectPage($connection, $page); break;
-        case ProductType::GUIDE: $products = Guide::selectPage($connection, $page); break;
     }
     $connection->close();
 ?>
@@ -42,7 +48,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
-        <link rel="icon" href="../../img/games-and-go.svg" type="image/png">
+        <link rel="icon" href="../../img/games-and-go.svg" type="image/svg">
     </head>
     <body>
         <nav id="navbar">

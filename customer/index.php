@@ -3,14 +3,11 @@
     require_once('../lib/utils.inc.php');
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
-    $settings = new Settings();
     try {
-        $connection = connect($settings);
         Auth::protect(['customer']);
     } catch(Response $error) {
         $error->send();
     }
-    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -22,7 +19,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
-        <link rel="icon" href="../img/games-and-go.svg" type="image/png">
+        <link rel="icon" href="../img/games-and-go.svg" type="image/svg">
     </head>
     <body>
         <nav id="navbar">
@@ -34,7 +31,8 @@
         </nav>
         <div class="panel box">
             <h2>Customer Home</h2>
-            <a href="./products/">View Products and add to Cart</a>
+            <a href="./products">View Products and add to Cart</a>
+            <a href="./cart">View Cart</a>
         </div>
     </body>
 </html>

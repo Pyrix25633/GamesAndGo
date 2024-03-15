@@ -33,7 +33,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
-        <link rel="icon" href="../../../img/games-and-go.svg" type="image/png">
+        <link rel="icon" href="../../../img/games-and-go.svg" type="image/svg">
     </head>
     <body>
         <nav id="navbar">

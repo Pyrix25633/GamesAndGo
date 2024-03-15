@@ -134,12 +134,12 @@
         }
 
         static function fromRow(array $row): Product {
-            return new Product($row['id'],
-                               $row['code'],
+            return new Product(intval($row['id']),
+                               intval($row['code']),
                                ProductType::fromMysqlString($row['productType']),
-                               $row['priceInCents'],
-                               $row['discount'],
-                               $row['availableQuantity']);
+                               intval($row['priceInCents']),
+                               intval($row['discount']),
+                               intval($row['availableQuantity']));
         }
 
         function toTableRow(): string {
@@ -158,7 +158,7 @@
 
         function toCustomerTableRow(): string {
             $row = $this->toTableRow();
-            return $row . '<td><a href="' . URL_ROOT_PATH . '/customer/products/add-to-cart.php?id=' . $this->id . '">Add to Cart</a></td>';
+            return $row . '<td><a href="' . URL_ROOT_PATH . '/customer/products/details.php?id=' . $this->id . '">Add to Cart</a></td>';
         }
 
         function toDetails(): string {
@@ -346,7 +346,7 @@
         }
 
         static function fromRow(array $row): Videogame {
-            return new Videogame(parent::fromRow($row), $row['title'], $row['plot'], $row['releaseYear']);
+            return new Videogame(parent::fromRow($row), $row['title'], $row['plot'], intval($row['releaseYear']));
         }
 
         static function selectPage(mysqli $connection, int $page): array {
@@ -602,6 +602,15 @@
 
         function toMysqlString(): string {
             return $this->name;
+        }
+
+        function toUiString(): string {
+            switch($this) {
+                case ProductType::CONSOLE: return 'Console';
+                case ProductType::VIDEOGAME: return 'Videogame';
+                case ProductType::ACCESSORY: return 'Accessory';
+                case ProductType::GUIDE: return 'Guide';
+            }
         }
 
         static function fromString(string $s): ProductType {
