@@ -51,6 +51,48 @@
             $statement->close();
         }
 
+        static function selectRowResult(mysqli $connection, int $id, string $fieldsAndTable): array {
+            try {
+                $sql = "
+                    " . $fieldsAndTable . "
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse('id');
+                return $row;
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function select(mysqli $connection, int $id): Product {
+            try {
+                $sql = "
+                    SELECT id, code, productType, price * 100 AS priceInCents, discount, availableQuantity
+                    FROM Products
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse('id');
+                switch(ProductType::fromMysqlString($row['productType'])) {
+                    case ProductType::CONSOLE: return Console::fromRow(array_merge($row, Console::selectRow($connection, $id)));
+                    case ProductType::VIDEOGAME: return Videogame::fromRow(array_merge($row, Videogame::selectRow($connection, $id)));
+                    case ProductType::ACCESSORY: return Accessory::fromRow(array_merge($row, Accessory::selectRow($connection, $id)));
+                    case ProductType::GUIDE: return Guide::fromRow(array_merge($row, Guide::selectRow($connection, $id)));
+                }
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
         static function productSelectNumberOfPages(mysqli $connection, string $table): int {
             try {
                 $sql = "
@@ -116,7 +158,16 @@
 
         function toCustomerTableRow(): string {
             $row = $this->toTableRow();
-            return $row . '<td><a href="' . $this->id . '">Add To Cart</a></td>';
+            return $row . '<td><a href="' . URL_ROOT_PATH . '/customer/products/add-to-cart.php?id=' . $this->id . '">Add to Cart</a></td>';
+        }
+
+        function toDetails(): string {
+            $row = getFileContent(Settings::LIB_ABSOLUTE_PATH. '/details/product.html');
+            $price = $this->priceInCents / 100;
+            $row = str_replace('{$price}', number_format($price, 2), $row);
+            $finalPrice = $price * (100 - $this->discount) / 100;
+            $row = str_replace('{$finalPrice}', number_format($finalPrice, 2), $row);
+            return $row;
         }
     }
 
@@ -175,6 +226,10 @@
             }
         }
 
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, 'SELECT name, gameTypes FROM Consoles');
+        }
+
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Consoles');
         }
@@ -188,7 +243,7 @@
                 $result = parent::selectPageResult($connection, 'name, gameTypes', 'INNER JOIN Consoles AS C ON C.id = P.id', $page);
                 while($row = $result->fetch_assoc())
                     $consoles[] = self::fromRow($row);
-                return $consoles;
+                return $consoles ?? array();
             } catch(mysqli_sql_exception $_) {
                 throw new UnprocessableContentResponse();
             }
@@ -196,6 +251,21 @@
 
         function toTableRow(): string {
             $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/console-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'gameTypes':
+                        foreach($value as $gameType => $gameTypeValue)
+                            $row = str_replace('{$gameTypes->' . $gameType . '}', $gameTypeValue ? 'Yes' : 'No', $row);
+                        break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
+
+        function toDetails(): string {
+            $row = parent::toDetails() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/details/console.html');
             foreach($this as $property => $value) {
                 switch($property) {
                     case 'productType': break;
@@ -267,6 +337,10 @@
             }
         }
 
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, 'SELECT title, plot, releaseYear FROM Videogames');
+        }
+
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Videogames');
         }
@@ -280,7 +354,7 @@
                 $result = parent::selectPageResult($connection, 'title, plot, releaseYear', 'INNER JOIN Videogames AS V ON V.id = P.id', $page);
                 while($row = $result->fetch_assoc())
                     $videogames[] = self::fromRow($row);
-                return $videogames;
+                return $videogames ?? array();
             } catch(mysqli_sql_exception $_) {
                 throw new UnprocessableContentResponse();
             }
@@ -288,6 +362,17 @@
 
         function toTableRow(): string {
             $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/videogame-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
+
+        function toDetails(): string {
+            $row = parent::toDetails() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/details/videogame.html');
             foreach($this as $property => $value) {
                 switch($property) {
                     case 'productType': break;
@@ -355,6 +440,10 @@
             }
         }
 
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, 'SELECT name, type FROM Accessories');
+        }
+
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Accessories');
         }
@@ -368,7 +457,7 @@
                 $result = parent::selectPageResult($connection, 'name, type', 'INNER JOIN Accessories AS A ON A.id = P.id', $page);
                 while($row = $result->fetch_assoc())
                     $accessories[] = self::fromRow($row);
-                return $accessories;
+                return $accessories ?? array();
             } catch(mysqli_sql_exception $_) {
                 throw new UnprocessableContentResponse();
             }
@@ -380,6 +469,24 @@
                 switch($property) {
                     case 'productType': break;
                     case 'type': $row = str_replace('{$' . $property . '}', $value->name, $row); break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
+
+        function toDetails(): string {
+            $row = parent::toDetails() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/details/accessory.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'type': 
+                        switch($value) {
+                            case AccessoryType::AUDIO: $type = 'Audio'; break;
+                            case AccessoryType::VIDEO: $type = 'Video'; break;
+                            case AccessoryType::INPUT: $type = 'Input'; break;
+                        }
+                        $row = str_replace('{$' . $property . '}', $type, $row); break;
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
                 }
             }
@@ -437,6 +544,10 @@
             }
         }
 
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, 'SELECT title FROM Guides');
+        }
+
         static function selectNumberOfPages(mysqli $connection): int {
             return parent::productSelectNumberOfPages($connection, 'Guides');
         }
@@ -450,7 +561,7 @@
                 $result = parent::selectPageResult($connection, 'title', 'INNER JOIN Guides AS G ON G.id = P.id', $page);
                 while($row = $result->fetch_assoc())
                     $guides[] = self::fromRow($row);
-                return $guides;
+                return $guides ?? array();
             } catch(mysqli_sql_exception $_) {
                 throw new UnprocessableContentResponse();
             }
@@ -458,6 +569,17 @@
 
         function toTableRow(): string {
             $row = parent::toTableRow() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/guide-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            return $row;
+        }
+
+        function toDetails(): string {
+            $row = parent::toDetails() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/details/guide.html');
             foreach($this as $property => $value) {
                 switch($property) {
                     case 'productType': break;

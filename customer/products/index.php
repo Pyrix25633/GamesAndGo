@@ -1,14 +1,7 @@
 <?php
     declare(strict_types = 1);
     require_once('../../lib/utils.inc.php');
-    require_once('../../lib/errors.inc.php');
-    require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
-    try {
-        Auth::protect(['customer']);
-    } catch(Response $error) {
-        $error->send();
-    }
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -12,11 +12,12 @@
             header('Location: ' . URL_ROOT_PATH . '/' . $type->value);
         }
 
-        static function protect(array $types): int {
+        static function protect(array $types, UserType &$type = null): int {
             if(!isset($_COOKIE[Settings::AUTH_COOKIE_NAME])) throw new UnauthorizedResponse();
             $cookie = Auth::decrypt($_COOKIE[Settings::AUTH_COOKIE_NAME]);
             $json = json_decode($cookie, true);
-            if(!in_array($json['type'], $types)) throw new ForbiddenResponse();
+            $type = $json['type'];
+            if(!in_array($type, $types)) throw new ForbiddenResponse();
             if($json['expiration'] < (new DateTime())->getTimestamp()) throw new UnauthorizedResponse();
             return $json['id'];
         }

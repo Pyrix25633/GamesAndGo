@@ -5,10 +5,9 @@
     require_once('../../lib/validation.inc.php');
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
-    $settings = new Settings();
     try {
         $userId = Auth::protect(['seller']);
-        $connection = connect($settings);
+        $connection = connect();
         $validator = new Validator($_GET);
         $productType = $validator->getProductType('product-type');
         try {
@@ -21,10 +20,10 @@
         $error->send();
     }
     switch($productType) {
-        case ProductType::CONSOLE: $pages = Console::selectNumberOfPages($connection, $settings); break;
-        case ProductType::VIDEOGAME: $pages = Videogame::selectNumberOfPages($connection, $settings); break;
-        case ProductType::ACCESSORY: $pages = Accessory::selectNumberOfPages($connection, $settings); break;
-        case ProductType::GUIDE: $pages = Guide::selectNumberOfPages($connection, $settings); break;
+        case ProductType::CONSOLE: $pages = Console::selectNumberOfPages($connection); break;
+        case ProductType::VIDEOGAME: $pages = Videogame::selectNumberOfPages($connection); break;
+        case ProductType::ACCESSORY: $pages = Accessory::selectNumberOfPages($connection); break;
+        case ProductType::GUIDE: $pages = Guide::selectNumberOfPages($connection); break;
     }
     $pageHelper = new PageHelper($page, $pages);
     switch($productType) {
