@@ -30,6 +30,7 @@
             </div>
         </nav>
         <div class="panel box">
+            <h2>Seller Home</h2>
             <a href="./products/new">New Product</a>
             <a href="./products/">View and Edit Products</a>
         </div>

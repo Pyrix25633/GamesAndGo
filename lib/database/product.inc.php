@@ -113,6 +113,11 @@
             $row = $this->toTableRow();
             return $row . '<td><a href="' . $this->id . '">Edit</a></td>';
         }
+
+        function toCustomerTableRow(): string {
+            $row = $this->toTableRow();
+            return $row . '<td><a href="' . $this->id . '">Add To Cart</a></td>';
+        }
     }
 
     class Console extends Product {

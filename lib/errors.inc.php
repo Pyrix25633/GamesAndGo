@@ -13,7 +13,7 @@
 
         function send(): void {
             http_response_code($this->httpCode);
-            $url = Settings::URL_ROOT_PATH . '/error.php?code=' . $this->httpCode . '&message=' . $this->httpMessage;
+            $url = URL_ROOT_PATH . '/error.php?code=' . $this->httpCode . '&message=' . $this->httpMessage;
             $url = str_replace(' ', '%20', $url);
             if($this->field != null)
                 $url .= '&field=' . $this->field;
@@ -60,7 +60,7 @@
 
     class InternalServerErrorResponse extends Response {
         function __construct() {
-            parent::__construct(500);
+            parent::__construct(500, 'Internal Server Error');
         }
     }
 ?>
