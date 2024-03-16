@@ -9,15 +9,9 @@
     try {
         $connection = connect();
         Auth::protect($connection, ['seller']);
-        $validator = new Validator($_POST);
-        $productType = $validator->getProductType('product-type');
-        switch($productType) {
-            case ProductType::CONSOLE: $product = Console::fromForm($validator); break;
-            case ProductType::VIDEOGAME: $product = Videogame::fromForm($validator); break;
-            case ProductType::ACCESSORY: $product = Accessory::fromForm($validator); break;
-            case ProductType::GUIDE: $product = Guide::fromForm($validator); break;
-        }
-        $product->insert($connection);
+        $validator = new Validator($_GET);
+        $id = $validator->getPositiveInt('id');
+        $product = Product::select($connection, $id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -29,7 +23,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - Product Created</title>
+        <title>Games And Go - Update Product</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
@@ -45,9 +39,19 @@
             </div>
         </nav>
         <div class="panel box">
-            <h2>Product Creation Succesful</h2>
-            <a href="../view.php?product-type=<?php echo $product->productType->value; ?>">Back</a>
-            <a href="../../">Home</a>
+            <form action="./update.php" method="POST">
+                <?php
+                    echo $product->formUpdate();
+                ?>
+                <input type="hidden" name="product-type" value="<?php echo $product->productType->value; ?>">
+                <div class="container section">
+                    <h2>Submit</h2>
+                    <img class="icon" src="../../../img/submit.svg" alt="Submit Icon">
+                </div>
+                <div class="container">
+                    <button type="submit">Update</button>
+                </div>
+            </form>
         </div>
     </body>
 </html>

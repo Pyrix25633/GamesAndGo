@@ -166,7 +166,11 @@ CREATE TABLE IF NOT EXISTS Purchases (
    id INT AUTO_INCREMENT,
    customerId INT NOT NULL,
    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   paymentType ENUM('CHEQUE', 'CREDIT_CARD', 'CREDIT_TRANSFER') NOT NULL,
+   paymentCode VARCHAR(24) NOT NULL,
+   commission TINYINT NOT NULL,
    PRIMARY KEY (id),
+   UNIQUE (paymentCode),
    FOREIGN KEY (customerId) REFERENCES Customers(id)
 );
 

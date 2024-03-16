@@ -17,7 +17,7 @@
             case ProductType::ACCESSORY: $product = Accessory::fromForm($validator); break;
             case ProductType::GUIDE: $product = Guide::fromForm($validator); break;
         }
-        $product->insert($connection);
+        $product->update($connection);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -29,7 +29,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - Product Created</title>
+        <title>Games And Go - Product Updated</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
@@ -45,7 +45,7 @@
             </div>
         </nav>
         <div class="panel box">
-            <h2>Product Creation Succesful</h2>
+            <h2>Product Update Succesful</h2>
             <a href="../view.php?product-type=<?php echo $product->productType->value; ?>">Back</a>
             <a href="../../">Home</a>
         </div>

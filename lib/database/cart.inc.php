@@ -15,7 +15,7 @@
             }
         }
 
-        static function selectId(mysqli $connection, int $userId): int {
+        static function selectId(mysqli $connection, int $customerId): int {
             try {
                 $sql = "
                     SELECT id
@@ -23,13 +23,45 @@
                     WHERE customerId = ?;
                 ";
                 $statement = $connection->prepare($sql);
-                $statement->bind_param('i', $userId);
+                $statement->bind_param('i', $customerId);
                 $statement->execute();
                 $result = $statement->get_result();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new InternalServerErrorResponse();
                 return intval($row['id']);
             } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function delete(mysqli $connection, int $id): void {
+            $sql = "
+                DELETE FROM Carts
+                WHERE id = ?;
+            ";
+            $statement = $connection->prepare($sql);
+            $statement->bind_param('i', $id);
+            $statement->execute();
+        }
+
+        static function checkout(mysqli $connection, Validator $validator, int $customerId): void {
+            try {
+                $cartId = self::selectId($connection, $customerId);
+                $purchase = Purchase::fromForm($validator, $customerId);
+                $connection->begin_transaction();
+                $productsOnCart = ProductOnCart::selectAll($connection, $cartId);
+                $purchase->insert($connection);
+                foreach($productsOnCart as $productOnCart) {
+                    $productOnPurchase = $productOnCart->toProductOnPurchase($connection, $purchase->id);
+                    $productOnPurchase->insert($connection);
+                    $productOnCart->delete($connection);
+                }
+                self::delete($connection, $cartId);
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                echo $_->getMessage();
+                $connection->rollback();
+                exit;
                 throw new InternalServerErrorResponse();
             }
         }
@@ -91,6 +123,45 @@
             }
         }
 
+        static function selectAll(mysqli $connection, int $cartId): array {
+            try {
+                $sql = "
+                    SELECT *
+                    FROM ProductsOnCarts
+                    WHERE cartId = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $cartId);
+                $statement->execute();
+                $result = $statement->get_result();
+                while($row = $result->fetch_assoc())
+                    $productsOnCart[] = self::fromRow($row);
+                return $productsOnCart ?? array();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function count(mysqli $connection, int $userId): int {
+            $cartId = Cart::selectId($connection, $userId);
+            try {
+                $sql = "
+                    SELECT COUNT(*) AS count
+                    FROM ProductsOnCarts
+                    WHERE cartId = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $cartId);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                if($row == null) return 0;
+                return intval($row['count']);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
         function delete(mysqli $connection): void {
             try {
                 $sql = "
@@ -104,10 +175,26 @@
                 throw new InternalServerErrorResponse();
             }
         }
+
+        function toProductOnPurchase(mysqli $connection, int $purchaseId): ProductOnPurchase {
+            $sql = "
+                SELECT ROUND(price * (100 - discount)) AS priceInCents
+                FROM Products
+                WHERE id = ?;
+            ";
+            $statement = $connection->prepare($sql);
+            $statement->bind_param('i', $this->productId);
+            $statement->execute();
+            $result = $statement->get_result();
+            $row = $result->fetch_assoc();
+            if($row == null) throw new InternalServerErrorResponse();
+            return new ProductOnPurchase(null, $this->productId, $purchaseId, $row['priceInCents'], $this->quantity);
+        }
     }
 
     class CartProduct {
         public int $id;
+        public int $productId;
         public int $code;
         public ProductType $productType;
         public int $priceInCents;
@@ -115,8 +202,10 @@
         public int $quantity;
         public string $nameOrTitle;
 
-        function __construct(int $id, int $code, ProductType $productType, int $priceInCents, int $discount, int $quantity, string $nameOrTitle) {
+        function __construct(int $id, int $productId, int $code, ProductType $productType, int $priceInCents,
+                             int $discount, int $quantity, string $nameOrTitle) {
             $this->id = $id;
+            $this->productId = $productId;
             $this->code = $code;
             $this->productType = $productType;
             $this->priceInCents = $priceInCents;
@@ -135,6 +224,7 @@
 
         static function fromRow(array $row): CartProduct {
             return new CartProduct(intval($row['id']),
+                                   intval($row['productId']),
                                    intval($row['code']),
                                    ProductType::fromMysqlString($row['productType']),
                                    intval($row['priceInCents']),
@@ -147,9 +237,9 @@
             $cartId = Cart::selectId($connection, $userId);
             try {
                 $sql = "
-                    SELECT R.pocId AS id, R.code, R.productType, R.priceInCents, R.discount, R.quantity, S.nameOrTitle
+                    SELECT R.pocId AS id, R.productId, R.code, R.productType, R.priceInCents, R.discount, R.quantity, S.nameOrTitle
                     FROM (
-                        SELECT P.id, POC.id AS pocId, P.code, P.productType, P.price * 100 AS priceInCents, P.discount, POC.quantity
+                        SELECT P.id, POC.id AS pocId, POC.productId, P.code, P.productType, P.price * 100 AS priceInCents, P.discount, POC.quantity
                         FROM ProductsOnCarts AS POC
                         INNER JOIN Products AS P
                         ON POC.productId = P.id
@@ -178,9 +268,9 @@
         static function select(mysqli $connection, int $productOnCartId, int $userId): CartProduct {
             try {
                 $sql = "
-                    SELECT R.pocId AS id, R.cartId, R.code, R.productType, R.priceInCents, R.discount, R.quantity, S.nameOrTitle
+                    SELECT R.pocId AS id, R.productId, R.cartId, R.code, R.productType, R.priceInCents, R.discount, R.quantity, S.nameOrTitle
                     FROM (
-                        SELECT P.id, POC.id AS pocId, POC.cartId, P.code, P.productType, P.price * 100 AS priceInCents, P.discount, POC.quantity
+                        SELECT P.id, POC.id AS pocId, POC.productId, POC.cartId, P.code, P.productType, P.price * 100 AS priceInCents, P.discount, POC.quantity
                         FROM ProductsOnCarts AS POC
                         INNER JOIN Products AS P
                         ON POC.productId = P.id
@@ -219,7 +309,7 @@
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
                 }
             }
-            $row .= '<td><a href="../products/details.php?id=' . $this->id . '">Details</a></td>';
+            $row .= '<td><a href="../products/details.php?id=' . $this->productId . '">Details</a></td>';
             $row .= '<td><a href="./details.php?id=' . $this->id . '">Remove</a></td>';
             return $row;
         }

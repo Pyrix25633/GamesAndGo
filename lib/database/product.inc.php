@@ -28,8 +28,17 @@
             return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/product.html');
         }
 
+        function formUpdate(): string {
+            return self::formNew();
+        }
+
         static function productFromForm(Validator $validator): Product {
-            return new Product(null,
+            try {
+                $id = $validator->getPositiveInt('id');
+            } catch(Response $_) {
+                $id = null;
+            }
+            return new Product($id,
                                $validator->getPositiveInt('code'),
                                $validator->getProductType('product-type'),
                                $validator->getPriceInCents('price-in-cents'),
@@ -48,6 +57,19 @@
             $statement->bind_param("isiii", $this->code, $formattedProductType, $this->priceInCents, $this->discount, $this->availableQuantity);
             $statement->execute();
             $this->id = $connection->insert_id;
+            $statement->close();
+        }
+
+        function update(mysqli $connection): void {
+            $sql = "
+                UPDATE Products
+                SET code = ?, productType = ?, price = ? / 100, discount = ?, availableQuantity = ?
+                WHERE id = ?;
+            ";
+            $statement = $connection->prepare($sql);
+            $formattedProductType = $this->productType->toMysqlString();
+            $statement->bind_param("isiiii", $this->code, $formattedProductType, $this->priceInCents, $this->discount, $this->availableQuantity, $this->id);
+            $statement->execute();
             $statement->close();
         }
 
@@ -153,7 +175,7 @@
 
         function toSellerTableRow(): string {
             $row = $this->toTableRow();
-            return $row . '<td><a href="' . $this->id . '">Edit</a></td>';
+            return $row . '<td><a href="' . URL_ROOT_PATH . '/seller/products/update/index.php?id=' . $this->id . '">Update</a></td>';
         }
 
         function toCustomerTableRow(): string {
@@ -200,6 +222,22 @@
             return $form;
         }
 
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/console.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'gameTypes':
+                        foreach($value as $gameType => $bool)
+                            $form = str_replace('{$gameTypes->' . $gameType . '}', $bool ? 'checked' : '', $form);
+                        break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
+                }
+            }
+            return $form;
+        }
+
         static function fromForm(Validator $validator): Console {
             $product = parent::productFromForm($validator);
             return new Console($product, $validator->getNonEmptyString('name'), GameTypes::fromForm($validator));
@@ -217,6 +255,27 @@
                 $statement = $connection->prepare($sql);
                 $formattedGameTypes = $this->gameTypes->toMysqlString();
                 $statement->bind_param("iss", $this->id, $this->name, $formattedGameTypes);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function update(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::update($connection);
+                $sql = "
+                    UPDATE Consoles
+                    SET name = ?, gameTypes = ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $formattedGameTypes = $this->gameTypes->toMysqlString();
+                $statement->bind_param("ssi", $this->name, $formattedGameTypes, $this->id);
                 $statement->execute();
                 $statement->close();
                 $connection->commit();
@@ -309,6 +368,18 @@
             return $form;
         }
 
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/videogame.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
+                }
+            }
+            return $form;
+        }
+
         static function fromForm(Validator $validator): Videogame {
             $product = parent::productFromForm($validator);
             return new Videogame($product,
@@ -328,6 +399,26 @@
                 ";
                 $statement = $connection->prepare($sql);
                 $statement->bind_param("issi", $this->id, $this->title, $this->plot, $this->releaseYear);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function update(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::update($connection);
+                $sql = "
+                    UPDATE Videogames
+                    SET title = ?, plot = ?, releaseYear = ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param("ssii", $this->title, $this->plot, $this->releaseYear, $this->id);
                 $statement->execute();
                 $statement->close();
                 $connection->commit();
@@ -408,7 +499,23 @@
             foreach(get_class_vars('Accessory') as $property => $value)
                 $form = str_replace('{$' . $property . '}', '', $form);
             foreach(AccessoryType::cases() as $accessoryType)
-                $form = str_replace('{$type->' . $accessoryType->value . '}', '', $form);
+                $form = str_replace('{$type::' . $accessoryType->name . '}', '', $form);
+            return $form;
+        }
+
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/accessory.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    case 'type':
+                        foreach(AccessoryType::cases() as $accessoryType)
+                            $form = str_replace('{$type::' . $accessoryType->name . '}', $value == $accessoryType ? 'selected' : '', $form);
+                        break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
+                }
+            }
             return $form;
         }
 
@@ -519,6 +626,18 @@
             return $form;
         }
 
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/guide.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
+                }
+            }
+            return $form;
+        }
+
         static function fromForm(Validator $validator): Guide {
             $product = parent::productFromForm($validator);
             return new Guide($product, $validator->getNonEmptyString('title'));
@@ -606,10 +725,10 @@
 
         function toUiString(): string {
             switch($this) {
-                case ProductType::CONSOLE: return 'Console';
-                case ProductType::VIDEOGAME: return 'Videogame';
-                case ProductType::ACCESSORY: return 'Accessory';
-                case ProductType::GUIDE: return 'Guide';
+                case self::CONSOLE: return 'Console';
+                case self::VIDEOGAME: return 'Videogame';
+                case self::ACCESSORY: return 'Accessory';
+                case self::GUIDE: return 'Guide';
             }
         }
 

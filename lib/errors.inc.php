@@ -54,7 +54,7 @@
 
     class UnprocessableContentResponse extends Response {
         function __construct(?string $field = null) {
-            parent::__construct(422, 'Unprocessable', $field);
+            parent::__construct(422, 'Unprocessable Content', $field);
         }
     }
 

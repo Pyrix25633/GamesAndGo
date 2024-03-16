@@ -104,5 +104,10 @@
             $parsed = $this->getNonEmptyString($key);
             return AccessoryType::fromString($parsed);
         }
+
+        function getPaymentType(string $key): PaymentType {
+            $parsed = $this->getNonEmptyString($key);
+            return PaymentType::fromString($parsed);
+        }
     }
 ?>

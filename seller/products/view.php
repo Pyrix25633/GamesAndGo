@@ -94,7 +94,7 @@
                                 case ProductType::GUIDE: echo Guide::tableHeaders(); break;
                             }
                         ?>
-                        <th>Edit</th>
+                        <th>Update</th>
                     </tr>
                 </thead>
                 <tbody>
