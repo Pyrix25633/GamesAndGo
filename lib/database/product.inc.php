@@ -83,6 +83,7 @@
                 $statement->bind_param('i', $id);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new NotFoundResponse('id');
                 return $row;
@@ -102,6 +103,7 @@
                 $statement->bind_param('i', $id);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new NotFoundResponse('id');
                 switch(ProductType::fromMysqlString($row['productType'])) {
@@ -124,9 +126,9 @@
                 $statement = $connection->prepare($sql);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 $pages = intdiv($row['records'], Settings::RECORDS_PER_PAGE);
-                $statement->close();
                 return $pages;
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
@@ -152,6 +154,35 @@
                 return $result;
             } catch(mysqli_sql_exception $_) {
                 throw new UnprocessableContentResponse();
+            }
+        }
+
+        static function purchase(mysqli $connection, int $id, int $quantity): void {
+            try {
+                $sql = "
+                    SELECT availableQuantity
+                    FROM Products
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                $statement->close();
+                if($row == null) throw new NotFoundResponse();
+                if(intval($row['availableQuantity']) < $quantity) throw new UnprocessableContentResponse();
+                $sql = "
+                    UPDATE Products
+                    SET availableQuantity = availableQuantity - ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('ii', $quantity, $id);
+                $statement->execute();
+                $statement->close();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
             }
         }
 

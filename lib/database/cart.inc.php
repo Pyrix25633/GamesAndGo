@@ -10,6 +10,7 @@
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('i', $userId);
                 $statement->execute();
+                $statement->close();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -26,6 +27,7 @@
                 $statement->bind_param('i', $customerId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new NotFoundResponse();
                 return intval($row['id']);
@@ -42,6 +44,7 @@
             $statement = $connection->prepare($sql);
             $statement->bind_param('i', $id);
             $statement->execute();
+            $statement->close();
         }
 
         static function checkout(mysqli $connection, Validator $validator, int $customerId): void {
@@ -52,6 +55,12 @@
                 $productsOnCart = ProductOnCart::selectAll($connection, $cartId);
                 $purchase->insert($connection);
                 foreach($productsOnCart as $productOnCart) {
+                    try {
+                        Product::purchase($connection, $productOnCart->productId, $productOnCart->quantity);
+                    } catch (Response $_) {
+                        $connection->rollback();
+                        throw new UnprocessableContentResponse();
+                    }
                     $productOnPurchase = $productOnCart->toProductOnPurchase($connection, $purchase->id);
                     $productOnPurchase->insert($connection);
                     $productOnCart->delete($connection);
@@ -59,9 +68,7 @@
                 self::delete($connection, $cartId);
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
-                echo $_->getMessage();
                 $connection->rollback();
-                exit;
                 throw new InternalServerErrorResponse();
             }
         }
@@ -99,6 +106,7 @@
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('iii', $productId, $cartId, $quantity);
                 $statement->execute();
+                $statement->close();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -115,6 +123,7 @@
                 $statement->bind_param('i', $id);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new NotFoundResponse('id');
                 return self::fromRow($row);
@@ -134,6 +143,7 @@
                 $statement->bind_param('i', $cartId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 while($row = $result->fetch_assoc())
                     $productsOnCart[] = self::fromRow($row);
                 return $productsOnCart ?? array();
@@ -154,6 +164,7 @@
                 $statement->bind_param('i', $cartId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) return 0;
                 return intval($row['count']);
@@ -171,6 +182,7 @@
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('i', $this->id);
                 $statement->execute();
+                $statement->close();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -186,6 +198,7 @@
             $statement->bind_param('i', $this->productId);
             $statement->execute();
             $result = $statement->get_result();
+            $statement->close();
             $row = $result->fetch_assoc();
             if($row == null) throw new InternalServerErrorResponse();
             return new ProductOnPurchase(null, $this->productId, $purchaseId, $row['priceInCents'], $this->quantity);
@@ -257,6 +270,7 @@
                 $statement->bind_param('i', $cartId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 while($row = $result->fetch_assoc())
                     $cartProducts[] = self::fromRow($row);
                 return $cartProducts ?? array();
@@ -270,7 +284,7 @@
                 $sql = "
                     SELECT R.pocId AS id, R.productId, R.cartId, R.code, R.productType, R.priceInCents, R.discount, R.quantity, S.nameOrTitle
                     FROM (
-                        SELECT P.id, POC.id AS pocId, POC.productId, POC.cartId, P.code, P.productType, P.price * 100 AS priceInCents, P.discount, POC.quantity
+                        SELECT P.id, POC.id AS pocId, POC.productId, POC.cartId, P.code, P.productType, ROUND(P.price * 100) AS priceInCents, P.discount, POC.quantity
                         FROM ProductsOnCarts AS POC
                         INNER JOIN Products AS P
                         ON POC.productId = P.id
@@ -288,6 +302,7 @@
                 $statement->bind_param('i', $productOnCartId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new NotFoundResponse('id');
                 if(intval($row['cartId']) != Cart::selectId($connection, $userId)) throw new ForbiddenResponse();

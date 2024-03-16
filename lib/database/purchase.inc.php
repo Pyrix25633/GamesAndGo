@@ -59,6 +59,7 @@
             $statement->bind_param('issi', $this->customerId, $formattedPaymentType, $this->paymentCode, $this->commission);
             $statement->execute();
             $this->id = $connection->insert_id;
+            $statement->close();
         }
 
         static function selectAll(mysqli $connection, int $customerId): array {
@@ -69,15 +70,37 @@
                     FROM ProductsOnPurchases AS POC
                     INNER JOIN Purchases AS P
                     ON P.id = POC.purchaseId
-                    WHERE customerId = ?;
+                    WHERE customerId = ?
+                    GROUP BY P.id;
                 ";
                 $statement = $connection->prepare($sql);
                 $statement->bind_param('i', $customerId);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 while($row = $result->fetch_assoc())
                     $purchases[] = self::fromRow($row);
                 return $purchases ?? array();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectCustomerId(mysqli $connection, int $id): int {
+            try {
+                $sql = "
+                    SELECT customerId
+                    FROM Purchases
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse();
+                return intval($row['customerId']);
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -96,7 +119,7 @@
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
                 }
             }
-            $row = str_replace('{$details}', '<a href="./details?id=' . $this->id . '">Details</a>', $row);
+            $row = str_replace('{$details}', '<a href="./details.php?id=' . $this->id . '">Details</a>', $row);
             return $row;
         }
     }
@@ -125,6 +148,91 @@
             $statement = $connection->prepare($sql);
             $statement->bind_param('iiii', $this->productId, $this->purchaseId, $this->piecePrice, $this->quantity);
             $statement->execute();
+            $statement->close();
+        }
+    }
+
+    class PurchaseProduct {
+        public int $productId;
+        public int $code;
+        public ProductType $productType;
+        public int $piecePriceInCents;
+        public int $quantity;
+        public string $nameOrTitle;
+
+        function __construct(int $productId, int $code, ProductType $productType, int $piecePriceInCents, int $quantity, string $nameOrTitle) {
+            $this->productId = $productId;
+            $this->code = $code;
+            $this->productType = $productType;
+            $this->piecePriceInCents = $piecePriceInCents;
+            $this->quantity = $quantity;
+            $this->nameOrTitle = $nameOrTitle;
+        }
+
+        static function tableGroups(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/purchase-product-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/purchase-product-headers.html');
+        }
+
+        static function fromRow(array $row): PurchaseProduct {
+            return new PurchaseProduct(intval($row['productId']),
+                                       intval($row['code']),
+                                       ProductType::fromMysqlString($row['productType']),
+                                       intval($row['piecePriceInCents']),
+                                       intval($row['quantity']),
+                                       $row['nameOrTitle']);
+        }
+
+        static function selectAll(mysqli $connection, int $purchaseId): array {
+            try {
+                $sql = "
+                    SELECT R.productId, R.code, R.productType, R.piecePriceInCents, R.quantity, S.nameOrTitle
+                    FROM (
+                        SELECT P.id, POP.productId, P.code, P.productType, ROUND(POP.piecePrice * 100) AS piecePriceInCents, POP.quantity
+                        FROM ProductsOnPurchases AS POP
+                        INNER JOIN Products AS P
+                        ON POP.productId = P.id
+                        WHERE purchaseId = ?
+                    ) AS R
+                    LEFT JOIN (
+                        SELECT id, name AS nameOrTitle FROM Consoles
+                        UNION ALL SELECT id, title AS nameOrTitle FROM Videogames
+                        UNION ALL SELECT id, name AS nameOrTitle FROM Accessories
+                        UNION ALL SELECT id, title AS nameOrTitle FROM Guides
+                    ) AS S
+                    ON S.id = R.id;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $purchaseId);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                while($row = $result->fetch_assoc())
+                    $cartProducts[] = self::fromRow($row);
+                return $cartProducts ?? array();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        function toTableRow(): string {
+            $row = getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/purchase-product-row.html');
+            $piecePrice = $this->piecePriceInCents / 100;
+            $row = str_replace('{$piecePrice}', number_format($piecePrice, 2), $row);
+            $total = $piecePrice * $this->quantity;
+            $row = str_replace('{$total}', number_format($total, 2), $row);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'productType': $row = str_replace('{$' . $property . '}', $value->toUiString(), $row); break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            $row = str_replace('{$total}', $total, $row);
+            $row .= '<td><a href="../products/details.php?id=' . $this->productId . '">Details</a></td>';
+            return $row;
         }
     }
 
@@ -143,7 +251,7 @@
 
         function toUiString(): string {
             switch($this) {
-                case self::CHEQUE: return 'Cheque (+10)';
+                case self::CHEQUE: return 'Cheque';
                 case self::CREDIT_CARD: return 'Credit Card';
                 case self::CREDIT_TRANSFER: return 'Credit Transfer';
             }
