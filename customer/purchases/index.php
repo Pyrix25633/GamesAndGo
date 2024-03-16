@@ -3,17 +3,12 @@
     require_once('../../lib/utils.inc.php');
     require_once('../../lib/errors.inc.php');
     require_once('../../lib/auth.inc.php');
-    require_once('../../lib/database/product.inc.php');
-    require_once('../../lib/database/cart.inc.php');
+    require_once('../../lib/database/purchase.inc.php');
     require_once('../../lib/database/user.inc.php');
     try {
         $connection = connect();
         $user = Auth::protect($connection, ['customer']);
-        try {
-            $products = CartProduct::selectAll($connection, $user->id);
-        } catch(Response $e) {
-            if($e instanceof NotFoundResponse) $products = array();
-        }
+        $purchases = Purchase::selectAll($connection, $user->id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -25,7 +20,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - View Cart</title>
+        <title>Games And Go - View Purchases</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
@@ -44,34 +39,22 @@
             <table>
                 <thead>
                     <tr>
-                        <?php echo CartProduct::tableGroups(); ?>
-                        <th></th>
-                        <th></th>
+                        <?php echo Purchase::tableGroups(); ?>
                     </tr>
                     <tr>
-                        <?php echo CartProduct::tableHeaders(); ?>
-                        <th>Details</th>
-                        <th>Remove</th>
+                        <?php echo Purchase::tableHeaders(); ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php
-                        foreach($products as $product) {
-                            echo '<tr>' . $product->toTableRow() . '</tr>';
+                        foreach($purchases as $purchase) {
+                            echo '<tr>' . $purchase->toTableRow() . '</tr>';
                         }
-                        if(sizeof($products) == 0)
-                            echo '<tr><td colspan="100">0 Products in Cart</td></tr>';
+                        if(sizeof($purchases) == 0)
+                            echo '<tr><td colspan="100">0 Purchases</td></tr>';
                     ?>
                 </tbody>
             </table>
-            <?php
-                if(sizeof($products) > 0)
-                    echo '
-                        <div class="container">
-                            <a href="./checkout.php">Checkout</a>
-                        </div>
-                    ';
-            ?>
         </div>
     </body>
 </html>

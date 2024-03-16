@@ -27,7 +27,7 @@
                 $statement->execute();
                 $result = $statement->get_result();
                 $row = $result->fetch_assoc();
-                if($row == null) throw new InternalServerErrorResponse();
+                if($row == null) throw new NotFoundResponse();
                 return intval($row['id']);
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
@@ -309,6 +309,8 @@
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
                 }
             }
+            $total = number_format(($this->priceInCents * (100 - $this->discount)) / 10000 * $this->quantity, 2);
+            $row = str_replace('{$total}', $total, $row);
             $row .= '<td><a href="../products/details.php?id=' . $this->productId . '">Details</a></td>';
             $row .= '<td><a href="./details.php?id=' . $this->id . '">Remove</a></td>';
             return $row;

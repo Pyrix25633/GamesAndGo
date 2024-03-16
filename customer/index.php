@@ -37,6 +37,7 @@
             <h2>Customer Home</h2>
             <a href="./products">View Products and add to Cart</a>
             <a href="./cart">View Cart</a>
+            <a href="./purchases">View Purchases</a>
         </div>
     </body>
 </html>
