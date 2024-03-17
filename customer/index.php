@@ -4,9 +4,11 @@
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
     require_once('../lib/database/user.inc.php');
+    require_once('../lib/database/loyalty-card.inc.php');
     try {
         $connection = connect();
-        Auth::protect($connection, ['customer']);
+        $user = Auth::protect($connection, ['customer']);
+        $points = LoyaltyCard::selectPoints($connection, $user->id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -35,6 +37,10 @@
         </nav>
         <div class="panel box">
             <h2>Customer Home</h2>
+            <?php
+                if($points === null) echo "You don't have a Loyalty Card";
+                else echo 'Loyalty Card: ' . $points . ' points';
+            ?>
             <a href="./products">View Products and add to Cart</a>
             <a href="./cart">View Cart</a>
             <a href="./purchases">View Purchases</a>
