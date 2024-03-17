@@ -4,20 +4,18 @@
     require_once('../../../lib/errors.inc.php');
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
-    require_once('../../../lib/database/product.inc.php');
     require_once('../../../lib/database/user.inc.php');
     try {
         $connection = connect();
         Auth::protect($connection, ['admin']);
         $validator = new Validator($_POST);
-        $productType = $validator->getProductType('product-type');
-        switch($productType) {
-            case ProductType::CONSOLE: $product = Console::fromForm($validator); break;
-            case ProductType::VIDEOGAME: $product = Videogame::fromForm($validator); break;
-            case ProductType::ACCESSORY: $product = Accessory::fromForm($validator); break;
-            case ProductType::GUIDE: $product = Guide::fromForm($validator); break;
+        $userType = $validator->getUserType('user-type');
+        switch($userType) {
+            case UserType::CUSTOMER: $user = Customer::fromForm($validator); break;
+            case UserType::SELLER: $user = Seller::fromForm($validator); break;
+            case UserType::ADMIN: $user = Admin::fromForm($validator); break;
         }
-        $product->update($connection);
+        $user->update($connection);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -29,7 +27,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - Product Updated</title>
+        <title>Games And Go - User Updated</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
@@ -45,8 +43,8 @@
             </div>
         </nav>
         <div class="panel box">
-            <h2>Product Update Succesful</h2>
-            <a href="../view.php?product-type=<?php echo $product->productType->value; ?>">Back</a>
+            <h2>User Update Succesful</h2>
+            <a href="../index.php">Back</a>
             <a href="../../">Home</a>
         </div>
     </body>

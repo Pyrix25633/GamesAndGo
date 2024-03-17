@@ -45,7 +45,7 @@
         </nav>
         <div class="panel box">
             <h2>User Creation Succesful</h2>
-            <a href="../view.php?user-type=<?php echo $user->userType->value; ?>">Back</a>
+            <a href="../index.php">Back</a>
             <a href="../../">Home</a>
         </div>
     </body>

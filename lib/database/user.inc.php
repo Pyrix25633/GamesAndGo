@@ -46,10 +46,15 @@
         }
 
         static function userFromForm(Validator $validator, UserType $userType): User {
+            try {
+                $id = $validator->getPositiveInt('id');
+            } catch(Response $_) {
+                $id = null;
+            }
             $password = $validator->getNonEmptyString('password');
             $confirmPassword = $validator->getNonEmptyString('confirm-password');
             if($password != $confirmPassword) throw new UnprocessableContentResponse('confirm-password');
-            return new User(null,
+            return new User($id,
                             $userType,
                             $validator->getNonEmptyString('name'),
                             $validator->getNonEmptyString('surname'),
@@ -66,16 +71,35 @@
         function insert(mysqli $connection): void {
             $sql = "
                 INSERT INTO Users
-                (name, surname, username, passwordHash, dateOfBirth, documentState, documentType, documentNumber)
-                VALUES (?, ?, ?, SHA2(?, 256), ?, ?, ?, ?);
+                (userType, name, surname, gender, dateOfBirth, documentState, documentType, documentNumber, username, passwordHash)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, SHA2(?, 256));
             ";
             $statement = $connection->prepare($sql);
-            $documentType = $this->documentType->name;
+            $formattedUserType = $this->userType->toMysqlString();
+            $formattedDocumentType = $this->documentType->toMysqlString();
+            $formattedGender = $this->gender->toMysqlString();
             $formattedDateOfBirth = $this->dateOfBirth->format('Y-m-d');
-            $statement->bind_param("ssssssss", $this->name, $this->surname, $this->username, $this->password, $formattedDateOfBirth,
-                $this->documentState, $documentType, $this->documentNumber);
+            $statement->bind_param("ssssssssss", $formattedUserType, $this->name, $this->surname, $formattedGender, $formattedDateOfBirth,
+                $this->documentState, $formattedDocumentType, $this->documentNumber, $this->username, $this->password);
             $statement->execute();
             $this->id = $connection->insert_id;
+            $statement->close();
+        }
+
+        function update(mysqli $connection): void {
+            $sql = "
+                UPDATE Users
+                SET name = ?, surname = ?, gender = ?, dateOfBirth = ?, documentState = ?,
+                    documentType = ?, documentNumber = ?, username = ?, passwordHash = SHA2(?, 256)
+                WHERE id = ?;
+            ";
+            $statement = $connection->prepare($sql);
+            $formattedGender = $this->gender->toMysqlString();
+            $formattedDocumentType = $this->documentType->toMysqlString();
+            $formattedDateOfBirth = $this->dateOfBirth->format('Y-m-d');
+            $statement->bind_param('ssssssissi', $this->name, $this->surname, $formattedGender, $formattedDateOfBirth, $this->documentState,
+                $formattedDocumentType, $this->documentNumber, $this->username, $this->password, $this->id);
+            $statement->execute();
             $statement->close();
         }
 
@@ -333,6 +357,27 @@
             }
         }
 
+        function update(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::update($connection);
+                $sql = "
+                    UPDATE Customers
+                    SET addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?, phoneNumberPrefix = ?, phoneNumber = ?, emailAddress = ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param("ssiiisi", $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                    $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->id);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
         static function selectRow(mysqli $connection, int $id): array {
             return parent::selectRowResult($connection, $id, '
                 SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress
@@ -459,6 +504,29 @@
             }
         }
 
+        function update(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::update($connection);
+                $sql = "
+                    UPDATE Sellers
+                    SET addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?, phoneNumberPrefix = ?,
+                        phoneNumber = ?, emailAddress = ?, code = ?, role = ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $formattedRole = $this->role->toMysqlString();
+                $statement->bind_param("ssiiisisi", $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                    $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->code, $formattedRole, $this->id);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
         static function selectRow(mysqli $connection, int $id): array {
             return parent::selectRowResult($connection, $id, '
                 SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role
@@ -541,9 +609,22 @@
                     VALUES (?);
                 ";
                 $statement = $connection->prepare($sql);
-                $statement->bind_param("i", $this->id);
+                $statement->bind_param('i', $this->id);
                 $statement->execute();
                 $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                echo $_->getMessage();
+                exit;
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
+
+        function update(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::update($connection);
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
                 $connection->rollback();

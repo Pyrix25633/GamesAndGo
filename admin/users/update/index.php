@@ -4,7 +4,6 @@
     require_once('../../../lib/errors.inc.php');
     require_once('../../../lib/validation.inc.php');
     require_once('../../../lib/auth.inc.php');
-    require_once('../../../lib/database/product.inc.php');
     require_once('../../../lib/database/user.inc.php');
     try {
         $connection = connect();
@@ -23,7 +22,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - Update Product</title>
+        <title>Games And Go - Update User</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
