@@ -1,0 +1,17 @@
+:root {
+    --color-background: #636363;
+    --color-lighter: #22412c;
+    --color-foreground: #dddddd;
+    --color-error: #F54F47;
+    --color-app: #58ff98;
+    --color-app-transparent: #58ff9870;
+    --color-app-dark: #032e13;
+}
+
+button {
+    color: var(--color-app-dark);
+}
+
+input, select, textarea {
+    background-color: var(--color-app-dark);
+}

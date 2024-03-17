@@ -2,11 +2,14 @@
     require_once('./lib/utils.inc.php');
     require_once('./lib/errors.inc.php');
     require_once('./lib/auth.inc.php');
+    require_once('./lib/database/user.inc.php');
     try {
-        $type = null;
-        Auth::protect(['customer', 'seller', 'admin'], $type);
+        $connection = connect();
+        $user = Auth::protect($connection, ['customer', 'seller', 'admin']);
     } catch(Response $_) {
+        $user = null;
     }
+    $connection->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,6 +23,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
+        <link rel="stylesheet" href="./css/style.css">
         <link rel="icon" href="./img/games-and-go.svg" type="image/png">
     </head>
     <body>
@@ -34,7 +38,7 @@
             <a href="./register">Register Here</a>
             <a href="./login">Login Here</a>
             <?php
-                if($type != null) echo '<a href="./' . $type . '">Home</a>';
+                if($user != null) echo '<a href="./' . $user->userType->value . '">Home</a>';
                 else echo '<a href="./customer/products">View Products without loggin in</a>';
             ?>
         </div>

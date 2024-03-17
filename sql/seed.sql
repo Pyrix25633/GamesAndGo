@@ -70,7 +70,7 @@ VALUES(@@IDENTITY, 'GTAV: how to complete all missions');
 -- Utenti
 -- //////
 
--- Dipendente
+-- Dipendente: username d.anselmi password pass123
 
 INSERT INTO Users
 (userType, name, surname, gender, dateOfBirth, documentState, documentType, documentNumber, username, passwordHash)
@@ -79,7 +79,7 @@ INSERT INTO Sellers
 (id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role)
 VALUES(@@IDENTITY, 'via', 'Cavour', 1, 39, 4579612347, 'd.anselmi@gmail.com', 1891, 'SHOP_ASSISTANT');
 
--- Amministratore
+-- Amministratore: username t.fassina password admin
 
 INSERT INTO Users
 (userType, name, surname, gender, dateOfBirth, documentState, documentType, documentNumber, username, passwordHash)

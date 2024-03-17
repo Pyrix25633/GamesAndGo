@@ -36,6 +36,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
+        <link rel="stylesheet" href="../../css/style.css">
         <link rel="icon" href="../../img/games-and-go.svg" type="image/svg">
     </head>
     <body>
@@ -70,7 +71,7 @@
                                     <h2>Add to Cart</h2>
                                     <img class="icon" src="../../img/add-to-cart.svg" alt="Add to Cart Icon">
                                 </div>
-                                <input type="hidden" name="id" value="<?php echo $product->id; ?>">
+                                <input type="hidden" name="id" value="' . $product->id . '">
                                 <div class="container space-between">
                                     <label for="quantity">Quantity:</label>
                                     <input class="small" type="number" name="quantity" id="quantity" value="1">
