@@ -29,6 +29,14 @@
             $this->passwordHash = $passwordHash;
         }
 
+        static function tableGroups(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/user-groups.html');
+        }
+
+        static function tableHeaders(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/user-headers.html');
+        }
+
         static function formNew(): string {
             return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/user.html');
         }
@@ -89,6 +97,46 @@
             }
         }
 
+        static function selectNumberOfPages(mysqli $connection): int {
+            try {
+                $sql = "
+                    SELECT COUNT(*) AS records
+                    FROM Users;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                $row = $result->fetch_assoc();
+                $pages = intdiv($row['records'], Settings::RECORDS_PER_PAGE);
+                return $pages;
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectPage(mysqli $connection, int $page): array {
+            try {
+                $sql = "
+                    SELECT *
+                    FROM Users
+                    LIMIT ?, ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $recordsPerPage = Settings::RECORDS_PER_PAGE;
+                $offset = $page * $recordsPerPage;
+                $statement->bind_param("ii", $offset, $recordsPerPage);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                while($row = $result->fetch_array())
+                    $users[] = self::fromRow($row);
+                return $users ?? array();
+            } catch(mysqli_sql_exception $_) {
+                throw new UnprocessableContentResponse();
+            }
+        }
+
         static function fromRow(array $row): User {
             return new User(intval($row['id']),
                             UserType::fromMysqlString($row['userType']),
@@ -102,6 +150,25 @@
                             $row['username'],
                             null,
                             $row['passwordHash']);
+        }
+
+        function toAdminTableRow(): string {
+            $row = getFileContent(Settings::LIB_ABSOLUTE_PATH. '/tables/user-row.html');
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'password': break;
+                    case 'passwordHash': break;
+                    case 'userType':
+                    case 'gender':
+                    case 'documentType':
+                        $row = str_replace('{$' . $property . '}', $value->toUiString(), $row);
+                        break;
+                    case 'dateOfBirth': $row = str_replace('{$' . $property . '}', $value->format('Y/m/d'), $row); break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            $row .= '<td><a href=>Update</a></td>';
+            return $row;
         }
 
         static function select(mysqli $connection, int $id): User {
@@ -344,6 +411,14 @@
             return $this->name;
         }
 
+        function toUiString(): string {
+            switch($this) {
+                case self::CUSTOMER: return 'Customer';
+                case self::SELLER: return 'Seller';
+                case self::ADMIN: return 'Admin';
+            }
+        }
+
         static function fromString(string $s): UserType {
             foreach(self::cases() as $userType) {
                 if($s == $userType->value)
@@ -370,6 +445,14 @@
             return $this->name;
         }
 
+        function toUiString(): string {
+            switch($this) {
+                case self::MALE: return 'Male';
+                case self::FEMALE: return 'Female';
+                case self::OTHER: return 'Other';
+            }
+        }
+
         static function fromString(string $s): Gender {
             foreach(self::cases() as $gender) {
                 if($s == $gender->value)
@@ -394,6 +477,14 @@
 
         function toMysqlString(): string {
             return $this->name;
+        }
+
+        function toUiString(): string {
+            switch($this) {
+                case self::ID: return 'ID';
+                case self::PASSPORT: return 'Passport';
+                case self::DRIVING_LICENSE: return 'Driving License';
+            }
         }
 
         static function fromString(string $s): DocumentType {

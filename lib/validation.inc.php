@@ -2,8 +2,8 @@
     class Validator {
         private array $data;
 
-        function __construct(?array $data) {
-            if($data == null) throw new MethodNotAllowedResponse();
+        function __construct(?array $data, bool $canBeEmpty = false) {
+            if(!$canBeEmpty && $data == null) throw new MethodNotAllowedResponse();
             $this->data = $data;
         }
 
