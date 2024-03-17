@@ -1,4 +1,12 @@
 <?php
+    /*
+        Classe per la validazione dei dati inviati tramite GET e POST,
+        se i dati ricevuti non rispettano le condizioni richieste viene generato
+        un errore che redireziona l'utente su una pagina di errore,
+        nell'applicazione pronta per la pubblicazione questa parte andrebbe migliorata
+        effettuando controlli più stringenti sui dati ed una gestione degli errori
+        più user friendly
+    */
     class Validator {
         private array $data;
 

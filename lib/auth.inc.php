@@ -1,4 +1,13 @@
 <?php
+    /*
+        Classe per la gestione dell'autenticazione tramite un cookie criptato criptato con
+        una chiave simmetrica conosciuta solamente dal server (che andrebbe gestita in modo più sicuro).
+        In questo modo il client non può leggere il contenuto del cookie, che è un oggetto json
+        contenente l'id dell'utente, l'hash della password (in questo modo se l'utente si vuole sloggare
+        può farlo cambiando la password) e scadenza (impostata anche sul cookie).
+        In questo modo un utente si può loggare contemporaneamente su più dispositivi.
+    */
+
     class Auth {
         static function login(int $id, UserType $type, string $passwordHash): void {
             $token['id'] = $id;

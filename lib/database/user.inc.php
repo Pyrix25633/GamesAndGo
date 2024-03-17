@@ -1,4 +1,12 @@
 <?php
+    /*
+        Classi per la gestione degli utenti,
+        ci sono metodi per la selezione e l'aggiornamento
+        e per la creazione di form vuoti o precompilati
+        e di tabelle con una struttura modulare grazie alla
+        programmazione ad oggetti
+    */
+
     class User {
         public ?int $id;
         public UserType $userType;
