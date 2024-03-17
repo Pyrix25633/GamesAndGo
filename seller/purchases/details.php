@@ -3,11 +3,16 @@
     require_once('../../lib/utils.inc.php');
     require_once('../../lib/errors.inc.php');
     require_once('../../lib/auth.inc.php');
+    require_once('../../lib/validation.inc.php');
     require_once('../../lib/database/product.inc.php');
+    require_once('../../lib/database/purchase.inc.php');
     require_once('../../lib/database/user.inc.php');
     try {
         $connection = connect();
-        Auth::protect($connection, ['seller']);
+        $user = Auth::protect($connection, ['seller']);
+        $validator = new Validator($_GET);
+        $id = $validator->getPositiveInt('id');
+        $products = PurchaseProduct::selectAll($connection, $id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -19,7 +24,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Games And Go - View Products</title>
+        <title>Games And Go - View Purchase</title>
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/style.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
@@ -35,12 +40,24 @@
             </div>
         </nav>
         <div class="panel box">
-            <form action="./view.php" method="GET">
-                <?php echo ProductType::formSelect(); ?>
-                <div class="container">
-                    <button type="submit">View</button>
-                </div>
-            </form>
+            <h3>Purchase Details</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <?php echo PurchaseProduct::tableGroups(); ?>
+                    </tr>
+                    <tr>
+                        <?php echo PurchaseProduct::tableHeaders(); ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                        foreach($products as $product) {
+                            echo '<tr>' . $product->toTableRow() . '</tr>';
+                        }
+                    ?>
+                </tbody>
+            </table>
         </div>
     </body>
 </html>

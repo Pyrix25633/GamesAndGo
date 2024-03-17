@@ -2,15 +2,19 @@
     class Purchase {
         public ?int $id;
         public int $customerId;
+        public ?string $customerUsername;
+        public ?PurchaseStatus $status;
         public ?DateTime $createdAt;
         public PaymentType $paymentType;
         public string $paymentCode;
         public ?int $productsTotalInCents;
         public int $commission;
 
-        function __construct(?int $id, int $customerId, ?DateTime $createdAt, PaymentType $paymentType,
-                             string $paymentCode, ?int $productsTotalInCents, int $commission) {
+        function __construct(?int $id, int $customerId, ?string $customerUsername, ?PurchaseStatus $status, ?DateTime $createdAt,
+                             PaymentType $paymentType, string $paymentCode, ?int $productsTotalInCents, int $commission) {
             $this->id = $id;
+            $this->customerUsername = $customerUsername;
+            $this->status = $status;
             $this->customerId = $customerId;
             $this->createdAt = $createdAt;
             $this->paymentType = $paymentType;
@@ -30,6 +34,8 @@
         static function fromRow(array $row): Purchase {
             return new Purchase(intval($row['id']),
                                 intval($row['customerId']),
+                                $row['customerUsername'] ?? null,
+                                PurchaseStatus::fromMysqlString($row['status']),
                                 new DateTime($row['createdAt']),
                                 PaymentType::fromMysqlString($row['paymentType']),
                                 $row['paymentCode'],
@@ -41,6 +47,8 @@
             $paymentType = $validator->getPaymentType('payment-type');
             return new Purchase(null,
                                 $customerId,
+                                null,
+                                null,
                                 null,
                                 $paymentType,
                                 $validator->getNonEmptyString('payment-code'),
@@ -62,10 +70,34 @@
             $statement->close();
         }
 
-        static function selectAll(mysqli $connection, int $customerId): array {
+        static function selectAll(mysqli $connection): array {
             try {
                 $sql = "
-                    SELECT P.id, P.customerId, P.createdAt, P.paymentType, P.paymentCode, 
+                    SELECT P.id, P.customerId, U.username AS customerUsername, P.status, P.createdAt, P.paymentType, P.paymentCode, 
+                        ROUND(SUM(POC.piecePrice * POC.quantity) * 100) AS productsTotalInCents, P.commission
+                    FROM ProductsOnPurchases AS POC
+                    INNER JOIN Purchases AS P
+                    ON P.id = POC.purchaseId
+                    INNER JOIN Users AS U
+                    ON U.id = P.customerId
+                    GROUP BY P.id;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                while($row = $result->fetch_assoc())
+                    $purchases[] = self::fromRow($row);
+                return $purchases ?? array();
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectCustomerAll(mysqli $connection, int $customerId): array {
+            try {
+                $sql = "
+                    SELECT P.id, P.customerId, P.status, P.createdAt, P.paymentType, P.paymentCode, 
                         ROUND(SUM(POC.piecePrice * POC.quantity) * 100) AS productsTotalInCents, P.commission
                     FROM ProductsOnPurchases AS POC
                     INNER JOIN Purchases AS P
@@ -106,7 +138,7 @@
             }
         }
 
-        function toTableRow(): string {
+        function toCustomerTableRow(): string {
             $row = getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/purchase-row.html');
             $productsTotal = $this->productsTotalInCents / 100;
             $row = str_replace('{$productsTotal}', number_format($productsTotal, 2), $row);
@@ -114,6 +146,8 @@
             $row = str_replace('{$total}', number_format($total, 2), $row);
             foreach($this as $property => $value) {
                 switch($property) {
+                    case 'customerUsername': break;
+                    case 'status': $row = str_replace('{$' . $property . '}', $value->toUiString(), $row); break;
                     case 'createdAt': $row = str_replace('{$' . $property . '}', $value->format('Y/m/d H:i:s'), $row); break;
                     case 'paymentType': $row = str_replace('{$' . $property . '}', $value->toUiString(), $row); break;
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
@@ -121,6 +155,25 @@
             }
             $row = str_replace('{$details}', '<a href="./details.php?id=' . $this->id . '">Details</a>', $row);
             return $row;
+        }
+
+        function toSellerTableRow(): string {
+            $row = getFileContent(Settings::LIB_ABSOLUTE_PATH . '/tables/purchase-row.html');
+            $productsTotal = $this->productsTotalInCents / 100;
+            $row = str_replace('{$productsTotal}', number_format($productsTotal, 2), $row);
+            $total = $productsTotal + $this->commission;
+            $row = str_replace('{$total}', number_format($total, 2), $row);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'status': $row = str_replace('{$' . $property . '}', $value->toUiString(), $row); break;
+                    case 'createdAt': $row = str_replace('{$' . $property . '}', $value->format('Y/m/d H:i:s'), $row); break;
+                    case 'paymentType': $row = str_replace('{$' . $property . '}', $value->toUiString(), $row); break;
+                    default: $row = str_replace('{$' . $property . '}', $value, $row); break;
+                }
+            }
+            $row = str_replace('{$details}', '<a href="./details.php?id=' . $this->id . '">Details</a>', $row);
+            $row = '<td>' . $this->customerUsername . '</td>' . $row;
+            return $row . '<td><a href="./update-status/index.php?id=' . $this->id . '">Update Status</a></td>';
         }
 
         static function selectTotalMonthlyRevenue(mysqli $connection): float {
@@ -135,9 +188,47 @@
                 $statement = $connection->prepare($sql);
                 $statement->execute();
                 $result = $statement->get_result();
+                $statement->close();
                 $row = $result->fetch_assoc();
                 if($row == null) throw new InternalServerErrorResponse();
                 return floatval($row['totalMonthlyRevenue']);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectStatus(mysqli $connection, int $id): PurchaseStatus {
+            try {
+                $sql = "
+                    SELECT status
+                    FROM Purchases
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse();
+                return PurchaseStatus::fromMysqlString($row['status']);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function updateStatus(mysqli $connection, int $id, PurchaseStatus $status): void {
+            try {
+                $sql = "
+                    UPDATE Purchases
+                    SET status = ?
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $formattedStatus = $status->toMysqlString();
+                $statement->bind_param('si', $formattedStatus, $id);
+                $statement->execute();
+                $statement->close();
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -253,6 +344,47 @@
             $row = str_replace('{$total}', $total, $row);
             $row .= '<td><a href="../products/details.php?id=' . $this->productId . '">Details</a></td>';
             return $row;
+        }
+    }
+
+    enum PurchaseStatus: string {
+        case PREPARING = 'preparing';
+        case DELIVERING = 'delivering';
+        case DELIVERED = 'delivered';
+
+        function formUpdate(): string {
+            $form = getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/purchase-status.html');
+            foreach(self::cases() as $purchaseStatus)
+                $form = str_replace('{$status::' . $purchaseStatus->name . '}', $this == $purchaseStatus ? 'selected' : '', $form);
+            return $form;
+        }
+
+        function toMysqlString(): string {
+            return $this->name;
+        }
+
+        function toUiString(): string {
+            switch($this) {
+                case self::PREPARING: return 'Preparing';
+                case self::DELIVERING: return 'Delivering';
+                case self::DELIVERED: return 'Delivered';
+            }
+        }
+
+        static function fromString(string $s): PurchaseStatus {
+            foreach(self::cases() as $purchaseStatus) {
+                if($s == $purchaseStatus->value)
+                    return $purchaseStatus;
+            }
+            throw new BadRequestResponse();
+        }
+
+        static function fromMysqlString(string $s): PurchaseStatus {
+            foreach(self::cases() as $purchaseStatus) {
+                if($s == $purchaseStatus->name)
+                    return $purchaseStatus;
+            }
+            throw new Error('Unknown PurchaseStatus: ' . $s);
         }
     }
 

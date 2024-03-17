@@ -8,7 +8,7 @@
     try {
         $connection = connect();
         $user = Auth::protect($connection, ['customer']);
-        $purchases = Purchase::selectAll($connection, $user->id);
+        $purchases = Purchase::selectCustomerAll($connection, $user->id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -36,6 +36,7 @@
             </div>
         </nav>
         <div class="panel box">
+            <h3>Purchases</h3>
             <table>
                 <thead>
                     <tr>
@@ -48,7 +49,7 @@
                 <tbody>
                     <?php
                         foreach($purchases as $purchase) {
-                            echo '<tr>' . $purchase->toTableRow() . '</tr>';
+                            echo '<tr>' . $purchase->toCustomerTableRow() . '</tr>';
                         }
                         if(sizeof($purchases) == 0)
                             echo '<tr><td colspan="100">0 Purchases</td></tr>';

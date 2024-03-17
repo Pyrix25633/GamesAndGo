@@ -125,5 +125,10 @@
             if($parsed > 10 || $parsed == 0) throw new BadRequestResponse($key);
             return $parsed;
         }
+
+        function getPurchaseStatus(string $key): PurchaseStatus {
+            $parsed = $this->getNonEmptyString($key);
+            return PurchaseStatus::fromString($parsed);
+        }
     }
 ?>

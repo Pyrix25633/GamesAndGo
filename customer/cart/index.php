@@ -41,6 +41,7 @@
             </div>
         </nav>
         <div class="panel box">
+            <h3>Cart</h3>
             <table>
                 <thead>
                     <tr>
