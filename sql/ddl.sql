@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS Feedbacks (
     comment TEXT NOT NULL,
     productId INT NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE(customerId, productId),
     FOREIGN KEY (customerId) REFERENCES Customers(id),
     FOREIGN KEY (productId) REFERENCES Products(id)
 );

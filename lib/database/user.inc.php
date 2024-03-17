@@ -261,6 +261,31 @@
                 throw new InternalServerErrorResponse();
             }
         }
+
+
+        function purchased(mysqli $connection, int $productId): bool {
+            try {
+                $sql = "
+                    SELECT COUNT(*) AS records
+                    FROM ProductsOnPurchases
+                    WHERE purchaseId IN (
+                        SELECT id
+                        FROM Purchases
+                        WHERE customerId = ?
+                    ) AND productId = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('ii', $this->id, $productId);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                $row = $result->fetch_assoc();
+                if($row == null) return false;
+                return intval($row['records']) > 0;
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
     }
 
     class Customer extends User {

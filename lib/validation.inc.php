@@ -119,5 +119,11 @@
             $parsed = $this->getNonEmptyString($key);
             return PaymentType::fromString($parsed);
         }
+
+        function getVote(string $key): int {
+            $parsed = $this->getPositiveInt($key);
+            if($parsed > 10 || $parsed == 0) throw new BadRequestResponse($key);
+            return $parsed;
+        }
     }
 ?>

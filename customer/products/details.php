@@ -6,12 +6,15 @@
     require_once('../../lib/auth.inc.php');
     require_once('../../lib/database/product.inc.php');
     require_once('../../lib/database/user.inc.php');
+    require_once('../../lib/database/feedback.inc.php');
     try {
         $connection = connect();
-        Auth::protect($connection, ['customer']);
+        $user = Auth::protect($connection, ['customer']);
         $validator = new Validator($_GET);
         $id = $validator->getPositiveInt('id');
         $product = Product::select($connection, $id);
+        $purchased = $user->purchased($connection, $id);
+        $feedbacks = Feedback::selectAll($connection, $id);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -68,6 +71,49 @@
                         <button type="submit">Add to Cart</button>
                     </div>
                 </form>
+            </div>
+            <?php
+                if($purchased)
+                    echo '
+                        <div class="container">
+                            <form action="./new-feedback.php" method="POST">
+                                ' . Feedback::formNew() .'
+                                <input type="hidden" name="product-id" value="' . $id . '">
+                                <div class="container">
+                                    <button type="submit">Post</button>
+                                </div>
+                            </form>
+                        </div>
+                    ';
+            ?>
+            <div class="container">
+                <div class="box">
+                    <div class="container">
+                        <h3>Feedbacks</h3>
+                        <img class="icon" src="../../img/feedback.svg" alt="Feedback Icon">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <?php
+                                    echo Feedback::tableGroups();
+                                ?>
+                            </tr>
+                            <tr>
+                                <?php
+                                    echo Feedback::tableHeaders();
+                                ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                                foreach($feedbacks as $feedback) {
+                                    echo '<tr>' . $feedback->toTableRow() . '</tr>';
+                                }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </body>
