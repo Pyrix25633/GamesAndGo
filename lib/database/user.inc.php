@@ -41,7 +41,8 @@
                             $userType,
                             $validator->getNonEmptyString('name'),
                             $validator->getNonEmptyString('surname'),
-                            $validator->getGender('gender'), $validator->getDateTime('date-of-birth'),
+                            $validator->getGender('gender'),
+                            $validator->getDateTime('date-of-birth'),
                             $validator->getState('document-state'),
                             $validator->getDocumentType('document-type'),
                             $validator->getNonEmptyString('document-number'),
@@ -131,10 +132,9 @@
         public int $phoneNumberPrefix;
         public int $phoneNumber;
         public string $emailAddress;
-        public ?int $loyaltyCardId;
 
         function __construct(User &$user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
-                             int $phoneNumberPrefix, int $phoneNumber, string $emailAddress, ?int $loyaltyCardId) {
+                             int $phoneNumberPrefix, int $phoneNumber, string $emailAddress) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
             $this->addressStreetType = $addressStreetType;
@@ -143,7 +143,6 @@
             $this->phoneNumberPrefix = $phoneNumberPrefix;
             $this->phoneNumber = $phoneNumber;
             $this->emailAddress = $emailAddress;
-            $this->loyaltyCardId = $loyaltyCardId;
         }
 
         static function formNew(): string {
@@ -166,15 +165,14 @@
         }
 
         static function fromForm(Validator &$validator): Customer {
-            $user = self::userFromForm($validator, UserType::CUSTOMER);
+            $user = parent::userFromForm($validator, UserType::CUSTOMER);
             return new Customer($user,
                                 $validator->getNonEmptyString('street-type'),
                                 $validator->getNonEmptyString('street-name'),
                                 $validator->getPositiveInt('house-number'),
                                 $validator->getPhoneNumberPrefix('phone-number-prefix'),
                                 $validator->getPhoneNumber('phone-number'),
-                                $validator->getEmail('email-address'),
-                                null);
+                                $validator->getEmail('email-address'));
         }
 
         function insert(mysqli $connection): void {
@@ -200,17 +198,147 @@
     }
 
     class Seller extends User {
+        public string $addressStreetType;
+        public string $addressStreetName;
+        public int $addressHouseNumber;
+        public int $phoneNumberPrefix;
+        public int $phoneNumber;
+        public string $emailAddress;
+        public int $code;
+        public SellerRole $role;
 
+        function __construct(User &$user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
+                             int $phoneNumberPrefix, int $phoneNumber, string $emailAddress, int $code, SellerRole $role) {
+            foreach($user as $property => $value)
+                $this->{$property} = $value;
+            $this->addressStreetType = $addressStreetType;
+            $this->addressStreetName = $addressStreetName;
+            $this->addressHouseNumber = $addressHouseNumber;
+            $this->phoneNumberPrefix = $phoneNumberPrefix;
+            $this->phoneNumber = $phoneNumber;
+            $this->emailAddress = $emailAddress;
+            $this->code = $code;
+            $this->role = $role;
+        }
+
+        static function formNew(): string {
+            $form = parent::formNew() . getFileContent(Settings::LIB_ABSOLUTE_PATH. '/forms/seller.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Seller') as $property => $value) {
+                switch($property) {
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$gender::' . $gender->name . '}', '', $form);
+                        break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$documentType::' . $documentType->name . '}', '', $form);
+                        break;
+                    case 'role':
+                        foreach(SellerRole::cases() as $role)
+                            $form = str_replace('{$documentType::' . $role->name . '}', '', $form);
+                        break;
+                    default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
+            return $form;
+        }
+
+        static function fromForm(Validator &$validator): Seller {
+            $user = parent::userFromForm($validator, UserType::SELLER);
+            return new Seller($user,
+                              $validator->getNonEmptyString('street-type'),
+                              $validator->getNonEmptyString('street-name'),
+                              $validator->getPositiveInt('house-number'),
+                              $validator->getPhoneNumberPrefix('phone-number-prefix'),
+                              $validator->getPhoneNumber('phone-number'),
+                              $validator->getEmail('email-address'),
+                              $validator->getPositiveInt('code'),
+                              $validator->getSellerRole('role'));
+        }
+
+        function insert(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::insert($connection);
+                $sql = "
+                    INSERT INTO Sellers
+                    (id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                ";
+                $statement = $connection->prepare($sql);
+                $formattedRole = $this->role->toMysqlString();
+                $statement->bind_param("issiiisis", $this->id, $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                    $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->code, $formattedRole);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
     }
 
     class Admin extends User {
+        function __construct(User &$user) {
+            foreach($user as $property => $value)
+                $this->{$property} = $value;
+        }
 
+        static function formNew(): string {
+            $form = parent::formNew();
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach(get_class_vars('Seller') as $property => $value) {
+                switch($property) {
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$gender::' . $gender->name . '}', '', $form);
+                        break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$documentType::' . $documentType->name . '}', '', $form);
+                        break;
+                    default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
+            return $form;
+        }
+
+        static function fromForm(Validator &$validator): Admin {
+            $user = parent::userFromForm($validator, UserType::ADMIN);
+            return new Admin($user);
+        }
+
+        function insert(mysqli $connection): void {
+            try {
+                $connection->begin_transaction();
+                parent::insert($connection);
+                $sql = "
+                    INSERT INTO Admins
+                    (id)
+                    VALUES (?);
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param("i", $this->id);
+                $statement->execute();
+                $statement->close();
+                $connection->commit();
+            } catch(mysqli_sql_exception $_) {
+                $connection->rollback();
+                throw new UnprocessableContentResponse();
+            }
+        }
     }
 
     enum UserType: string {
         case CUSTOMER = 'customer';
         case SELLER = 'seller';
         case ADMIN = 'admin';
+
+        static function formSelect(): string {
+            return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/user-type.html');
+        }
 
         function toMysqlString(): string {
             return $this->name;
@@ -262,7 +390,7 @@
     enum DocumentType: string {
         case ID = 'id';
         case PASSPORT = 'passport';
-        case DRIVING_LICENSE = 'diving-license';
+        case DRIVING_LICENSE = 'driving-license';
 
         function toMysqlString(): string {
             return $this->name;
@@ -282,6 +410,31 @@
                     return $documentType;
             }
             throw new Error('Unknown DocumentType: ' . $s);
+        }
+    }
+
+    enum SellerRole: string {
+        case SHOP_ASSISTANT = 'shop-assistant';
+        case WAREHOUSE_MAN = 'warehouse-man';
+
+        function toMysqlString(): string {
+            return $this->name;
+        }
+
+        static function fromString(string $s): SellerRole {
+            foreach(self::cases() as $sellerRole) {
+                if($s == $sellerRole->value)
+                    return $sellerRole;
+            }
+            throw new BadRequestResponse();
+        }
+
+        static function fromMysqlString(string $s): SellerRole {
+            foreach(self::cases() as $sellerRole) {
+                if($s == $sellerRole->name)
+                    return $sellerRole;
+            }
+            throw new Error('Unknown SellerRole: ' . $s);
         }
     }
 ?>

@@ -3,10 +3,12 @@
     require_once('../lib/utils.inc.php');
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
+    require_once('../lib/database/user.inc.php');
     try {
         $connection = connect();
-        $userId = Auth::protect(['admin']);
+        Auth::protect($connection, ['admin']);
     } catch(Response $error) {
+        $connection->close();
         $error->send();
     }
     $connection->close();
@@ -21,7 +23,7 @@
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/roboto-condensed-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/compact-mode-off.css">
         <link rel="stylesheet" href="https://pyrix25633.github.io/css/sharp-mode-off.css">
-        <link rel="icon" href="../img/games-and-go.svg" type="image/png">
+        <link rel="icon" href="../img/games-and-go.svg" type="image/svg">
     </head>
     <body>
         <nav id="navbar">
@@ -32,9 +34,9 @@
             </div>
         </nav>
         <div class="panel box">
-            <h2>Login Succesful</h2>
-            <span class="text">You are being redirected</span>
-            <?php echo $userId; ?>
+            <h2>Admin Home</h2>
+            <a href="./users/new">New User</a>
+            <a href="./users/">View and Update Users</a>
         </div>
     </body>
 </html>

@@ -88,6 +88,16 @@
             return ProductType::fromString($parsed);
         }
 
+        function getUserType(string $key): UserType {
+            $parsed = $this->getNonEmptyString($key);
+            return UserType::fromString($parsed);
+        }
+
+        function getSellerRole(string $key): SellerRole {
+            $parsed = $this->getNonEmptyString($key);
+            return SellerRole::fromString($parsed);
+        }
+
         function getPriceInCents(string $key): int {
             $parsed = $this->getPositiveInt($key);
             if($parsed > 9999999) throw new BadRequestResponse($key);
