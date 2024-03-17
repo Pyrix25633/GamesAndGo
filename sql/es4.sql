@@ -4,7 +4,6 @@
 -- riportando il costo dell'acquisto fatto
 
 -- Esempio con inizio intervallo '2024-03-01 00:00:00' e fine intervallo '2024-03-16 19:00:00'
-
 SELECT U.name, U.surname, U.id, R.*, R.productsTotal + R.commission AS total
 FROM (
     SELECT P.customerId, P.createdAt, P.paymentType, P.paymentCode,
@@ -23,7 +22,6 @@ ORDER BY createdAt ASC;
 -- Eliminazione di un dipendente dal database, con indicazione del codice del dipendente
 
 -- Esempio con codice dipendente 1891
-
 SET @SellerId = (
     SELECT id
     FROM Sellers
@@ -38,4 +36,17 @@ WHERE id = @SellerId;
 -- Dato un certo prodotto, consentire al dipendente di visualizzare l’elenco delle recensioni
 -- con il voto medio dei feedback ricevuti da tutti i clienti
 
--- Esempio con id prodotto 3
+-- Esempi con id prodotto 3
+
+-- Elenco delle rencesioni
+SELECT R.vote, R.comment, U.username AS customerUsername FROM (
+    SELECT * FROM Feedbacks
+    WHERE productId = 3
+) AS R
+INNER JOIN Users AS U
+ON R.customerId = U.id;
+
+-- Media dei voti
+SELECT AVG(vote)
+FROM Feedbacks
+WHERE productId = 3;
