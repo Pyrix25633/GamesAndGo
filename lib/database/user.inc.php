@@ -41,6 +41,10 @@
             return getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/user.html');
         }
 
+        function formUpdate(): string {
+            return self::formNew();
+        }
+
         static function userFromForm(Validator $validator, UserType $userType): User {
             $password = $validator->getNonEmptyString('password');
             $confirmPassword = $validator->getNonEmptyString('confirm-password');
@@ -167,7 +171,7 @@
                     default: $row = str_replace('{$' . $property . '}', $value, $row); break;
                 }
             }
-            $row .= '<td><a href=>Update</a></td>';
+            $row .= '<td><a href="./update/index.php?id=' . $this->id . '">Update</a></td>';
             return $row;
         }
 
@@ -184,8 +188,51 @@
                 $result = $statement->get_result();
                 $row = $result->fetch_assoc();
                 $statement->close();
-                if($row == null) throw new NotFoundResponse('username');
+                if($row == null) throw new NotFoundResponse('id');
                 return self::fromRow($row);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectRowResult(mysqli $connection, int $id, string $fieldsAndTable): array {
+            try {
+                $sql = "
+                    " . $fieldsAndTable . "
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $statement->close();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new NotFoundResponse('id');
+                return $row;
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
+
+        static function selectUser(mysqli $connection, int $id): User {
+            try {
+                $sql = "
+                    SELECT *
+                    FROM Users
+                    WHERE id = ?;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->bind_param('i', $id);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                $statement->close();
+                if($row == null) throw new NotFoundResponse('id');
+                switch(UserType::fromMysqlString($row['userType'])) {
+                    case UserType::CUSTOMER: return Customer::fromRow(array_merge($row, Customer::selectRow($connection, $id)));
+                    case UserType::SELLER: return Seller::fromRow(array_merge($row, Seller::selectRow($connection, $id)));
+                    case UserType::ADMIN: return Admin::fromRow(array_merge($row, Admin::selectRow($connection, $id)));
+                }
             } catch(mysqli_sql_exception $_) {
                 throw new InternalServerErrorResponse();
             }
@@ -200,7 +247,7 @@
         public int $phoneNumber;
         public string $emailAddress;
 
-        function __construct(User &$user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
+        function __construct(User $user, string $addressStreetType, string $addressStreetName, int $addressHouseNumber,
                              int $phoneNumberPrefix, int $phoneNumber, string $emailAddress) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
@@ -219,13 +266,36 @@
                 switch($property) {
                     case 'gender':
                         foreach(Gender::cases() as $gender)
-                            $form = str_replace('{$gender::' . $gender->name . '}', '', $form);
+                            $form = str_replace('{$' . $property . '::' . $gender->name . '}', '', $form);
                         break;
                     case 'documentType':
                         foreach(DocumentType::cases() as $documentType)
-                            $form = str_replace('{$documentType::' . $documentType->name . '}', '', $form);
+                            $form = str_replace('{$' . $property . '::' . $documentType->name . '}', '', $form);
                         break;
                     default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
+            return $form;
+        }
+
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/customer.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'userType': break;
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$' . $property . '::' . $gender->name . '}', $gender == $value ? 'selected' : '', $form);
+                        break;
+                    case 'dateOfBirth': $form = str_replace('{$' . $property . '}', $value->format('Y-m-d'), $form); break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$' . $property . '::' . $documentType->name . '}', $documentType == $value ? 'selected' : '', $form);
+                        break;
+                    case 'password': break;
+                    case 'passwordHash': break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
                 }
             }
             return $form;
@@ -262,6 +332,22 @@
                 throw new UnprocessableContentResponse();
             }
         }
+
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, '
+                SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress
+                FROM Customers');
+        }
+
+        static function fromRow(array $row): Customer {
+            return new Customer(parent::fromRow($row),
+                                $row['addressStreetType'],
+                                $row['addressStreetName'],
+                                intval($row['addressHouseNumber']),
+                                intval($row['phoneNumberPrefix']),
+                                intval($row['phoneNumber']),
+                                $row['emailAddress']);
+        }
     }
 
     class Seller extends User {
@@ -274,7 +360,7 @@
         public int $code;
         public SellerRole $role;
 
-        function __construct(User &$user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
+        function __construct(User $user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
                              int $phoneNumberPrefix, int $phoneNumber, string $emailAddress, int $code, SellerRole $role) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
@@ -306,6 +392,33 @@
                             $form = str_replace('{$documentType::' . $role->name . '}', '', $form);
                         break;
                     default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
+            return $form;
+        }
+
+        function formUpdate(): string {
+            $form = parent::formUpdate() . getFileContent(Settings::LIB_ABSOLUTE_PATH . '/forms/seller.html');
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'userType': break;
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$' . $property . '::' . $gender->name . '}', $gender == $value ? 'selected' : '', $form);
+                        break;
+                    case 'dateOfBirth': $form = str_replace('{$' . $property . '}', $value->format('Y-m-d'), $form); break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$' . $property . '::' . $documentType->name . '}', $documentType == $value ? 'selected' : '', $form);
+                        break;
+                    case 'role':
+                        foreach(SellerRole::cases() as $sellerRole)
+                            $form = str_replace('{$' . $property . '::' . $sellerRole->name . '}', $sellerRole == $value ? 'selected' : '', $form);
+                        break;
+                    case 'password': break;
+                    case 'passwordHash': break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
                 }
             }
             return $form;
@@ -345,10 +458,28 @@
                 throw new UnprocessableContentResponse();
             }
         }
+
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, '
+                SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role
+                FROM Sellers');
+        }
+
+        static function fromRow(array $row): Seller {
+            return new Seller(parent::fromRow($row),
+                                $row['addressStreetType'],
+                                $row['addressStreetName'],
+                                intval($row['addressHouseNumber']),
+                                intval($row['phoneNumberPrefix']),
+                                intval($row['phoneNumber']),
+                                $row['emailAddress'],
+                                intval($row['code']),
+                                SellerRole::fromMysqlString($row['role']));
+        }
     }
 
     class Admin extends User {
-        function __construct(User &$user) {
+        function __construct(User $user) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
         }
@@ -367,6 +498,29 @@
                             $form = str_replace('{$documentType::' . $documentType->name . '}', '', $form);
                         break;
                     default: $form = str_replace('{$' . $property . '}', '', $form); break;
+                }
+            }
+            return $form;
+        }
+
+        function formUpdate(): string {
+            $form = parent::formUpdate();
+            $form = str_replace('{$basePath}', URL_ROOT_PATH, $form);
+            foreach($this as $property => $value) {
+                switch($property) {
+                    case 'userType': break;
+                    case 'gender':
+                        foreach(Gender::cases() as $gender)
+                            $form = str_replace('{$' . $property . '::' . $gender->name . '}', $gender == $value ? 'selected' : '', $form);
+                        break;
+                    case 'dateOfBirth': $form = str_replace('{$' . $property . '}', $value->format('Y-m-d'), $form); break;
+                    case 'documentType':
+                        foreach(DocumentType::cases() as $documentType)
+                            $form = str_replace('{$' . $property . '::' . $documentType->name . '}', $documentType == $value ? 'selected' : '', $form);
+                        break;
+                    case 'password': break;
+                    case 'passwordHash': break;
+                    default: $form = str_replace('{$' . $property . '}', $value, $form); break;
                 }
             }
             return $form;
@@ -395,6 +549,16 @@
                 $connection->rollback();
                 throw new UnprocessableContentResponse();
             }
+        }
+
+        static function selectRow(mysqli $connection, int $id): array {
+            return parent::selectRowResult($connection, $id, '
+                SELECT id
+                FROM Admins');
+        }
+
+        static function fromRow(array $row): Admin {
+            return new Admin(parent::fromRow($row));
         }
     }
 
