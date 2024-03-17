@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS Sellers (
     -- ruoli dipendente e le relative operazioni che può svolgere
     role ENUM('SHOP_ASSISTANT', 'WAREHOUSE_MAN') NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (id) REFERENCES Users(id)
+    FOREIGN KEY (id) REFERENCES Users(id),
+    UNIQUE (code)
 );
 
 CREATE TABLE IF NOT EXISTS Admins (
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS LoyaltyCards (
     points INT NOT NULL DEFAULT 0,
     customerId INT NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE (rfid),
     UNIQUE (customerId),
     FOREIGN KEY (customerId) REFERENCES Customers(id)
 );
@@ -174,8 +176,8 @@ CREATE TABLE IF NOT EXISTS Suppliers (
     PRIMARY KEY (id),
     UNIQUE (name),
     UNIQUE (vatIdentificationNumber),
-    UNIQUE (emailAddress),
-    UNIQUE (phoneNumberPrefix, phoneNumber)
+    UNIQUE (phoneNumberPrefix, phoneNumber),
+    UNIQUE (emailAddress)
 );
 
 -- ////////
