@@ -4,9 +4,11 @@
     require_once('../lib/errors.inc.php');
     require_once('../lib/auth.inc.php');
     require_once('../lib/database/user.inc.php');
+    require_once('../lib/database/purchase.inc.php');
     try {
         $connection = connect();
         Auth::protect($connection, ['admin']);
+        $totalMontlyRevenue = Purchase::selectTotalMonthlyRevenue($connection);
     } catch(Response $error) {
         $connection->close();
         $error->send();
@@ -35,6 +37,7 @@
         </nav>
         <div class="panel box">
             <h2>Admin Home</h2>
+            Total Montly Revenue: <?php echo number_format($totalMontlyRevenue, 2); ?>
             <a href="./users/new">New User</a>
             <a href="./users/">View and Update Users</a>
             <a href="../customer/products">View Products and Feedbacks</a>

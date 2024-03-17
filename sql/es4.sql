@@ -11,7 +11,7 @@ FROM (
     FROM ProductsOnPurchases AS POC
     INNER JOIN Purchases AS P
     ON P.id = POC.purchaseId
-    WHERE createdAt > '2024-03-01 00:00:00' AND createdAt < '2024-03-16 19:00:00'
+    WHERE P.createdAt > '2024-03-01 00:00:00' AND P.createdAt < '2024-03-16 19:00:00'
     GROUP BY P.id
 ) AS R
 INNER JOIN Users AS U

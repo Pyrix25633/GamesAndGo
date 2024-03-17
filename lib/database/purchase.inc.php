@@ -122,6 +122,26 @@
             $row = str_replace('{$details}', '<a href="./details.php?id=' . $this->id . '">Details</a>', $row);
             return $row;
         }
+
+        static function selectTotalMonthlyRevenue(mysqli $connection): float {
+            try {
+                $sql = "
+                    SELECT SUM(POC.piecePrice * POC.quantity) AS totalMonthlyRevenue
+                    FROM ProductsOnPurchases AS POC
+                    INNER JOIN Purchases AS P
+                    ON P.id = POC.purchaseId
+                    WHERE P.createdAt > CURRENT_DATE - INTERVAL 1 MONTH AND P.createdAt <= CURRENT_TIMESTAMP;
+                ";
+                $statement = $connection->prepare($sql);
+                $statement->execute();
+                $result = $statement->get_result();
+                $row = $result->fetch_assoc();
+                if($row == null) throw new InternalServerErrorResponse();
+                return floatval($row['totalMonthlyRevenue']);
+            } catch(mysqli_sql_exception $_) {
+                throw new InternalServerErrorResponse();
+            }
+        }
     }
 
     class ProductOnPurchase {
