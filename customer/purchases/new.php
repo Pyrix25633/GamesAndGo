@@ -8,6 +8,7 @@
     require_once('../../lib/database/user.inc.php');
     require_once('../../lib/database/product.inc.php');
     require_once('../../lib/database/purchase.inc.php');
+    require_once('../../lib/database/loyalty-card.inc.php');
     try {
         $connection = connect();
         $user = Auth::protect($connection, ['customer']);

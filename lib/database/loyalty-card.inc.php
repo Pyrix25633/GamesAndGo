@@ -56,5 +56,17 @@
                 throw new InternalServerErrorResponse();
             }
         }
+
+        static function updatePoints(mysqli $connection, int $customerId, int $newPoints): void {
+            $sql = "
+                UPDATE LoyaltyCards
+                SET points = points + ?
+                WHERE customerId = ?;
+            ";
+            $statement = $connection->prepare($sql);
+            $statement->bind_param('ii', $newPoints, $customerId);
+            $statement->execute();
+            $statement->close();
+        }
     }
 ?>

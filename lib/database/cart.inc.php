@@ -54,6 +54,7 @@
                 $connection->begin_transaction();
                 $productsOnCart = ProductOnCart::selectAll($connection, $cartId);
                 $purchase->insert($connection);
+                $total = 0;
                 foreach($productsOnCart as $productOnCart) {
                     try {
                         Product::purchase($connection, $productOnCart->productId, $productOnCart->quantity);
@@ -62,9 +63,12 @@
                         throw new UnprocessableContentResponse();
                     }
                     $productOnPurchase = $productOnCart->toProductOnPurchase($connection, $purchase->id);
+                    $total += $productOnPurchase->piecePrice;
                     $productOnPurchase->insert($connection);
                     $productOnCart->delete($connection);
                 }
+                $points = intdiv($total, 1500);
+                LoyaltyCard::updatePoints($connection, $customerId, $points);
                 self::delete($connection, $cartId);
                 $connection->commit();
             } catch(mysqli_sql_exception $_) {
