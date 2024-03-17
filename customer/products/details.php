@@ -9,11 +9,16 @@
     require_once('../../lib/database/feedback.inc.php');
     try {
         $connection = connect();
-        $user = Auth::protect($connection, ['customer']);
+        try {
+            $user = Auth::protect($connection, ['customer']);
+        } catch(Response $_) {
+            $user = null;
+        }
         $validator = new Validator($_GET);
         $id = $validator->getPositiveInt('id');
         $product = Product::select($connection, $id);
-        $purchased = $user->purchased($connection, $id);
+        if($user != null) $purchased = $user->purchased($connection, $id);
+        else $purchased = false;
         $feedbacks = Feedback::selectAll($connection, $id);
     } catch(Response $error) {
         $connection->close();
@@ -56,22 +61,27 @@
                 </h2>
             </div>
             <?php echo $product->toDetails(); ?>
-            <div class="container">
-                <form action="../cart/add.php" method="POST">
-                    <div class="container section">
-                        <h2>Add to Cart</h2>
-                        <img class="icon" src="../../img/add-to-cart.svg" alt="Add to Cart Icon">
-                    </div>
-                    <input type="hidden" name="id" value="<?php echo $product->id; ?>">
-                    <div class="container space-between">
-                        <label for="quantity">Quantity:</label>
-                        <input class="small" type="number" name="quantity" id="quantity" value="1">
-                    </div>
-                    <div class="container">
-                        <button type="submit">Add to Cart</button>
-                    </div>
-                </form>
-            </div>
+            <?php
+                if($user != null)
+                    echo '
+                        <div class="container">
+                            <form action="../cart/add.php" method="POST">
+                                <div class="container section">
+                                    <h2>Add to Cart</h2>
+                                    <img class="icon" src="../../img/add-to-cart.svg" alt="Add to Cart Icon">
+                                </div>
+                                <input type="hidden" name="id" value="<?php echo $product->id; ?>">
+                                <div class="container space-between">
+                                    <label for="quantity">Quantity:</label>
+                                    <input class="small" type="number" name="quantity" id="quantity" value="1">
+                                </div>
+                                <div class="container">
+                                    <button type="submit">Add to Cart</button>
+                                </div>
+                            </form>
+                        </div>
+                    ';
+            ?>
             <?php
                 if($purchased)
                     echo '
@@ -110,6 +120,8 @@
                                 foreach($feedbacks as $feedback) {
                                     echo '<tr>' . $feedback->toTableRow() . '</tr>';
                                 }
+                                if(sizeof($feedbacks) == 0)
+                                    echo '<tr><td colspan="100">0 Feedbacks</td></tr>';
                             ?>
                         </tbody>
                     </table>

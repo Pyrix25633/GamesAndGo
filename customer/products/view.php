@@ -91,7 +91,7 @@
                                 case ProductType::GUIDE: echo Guide::tableHeaders(); break;
                             }
                         ?>
-                        <th>Add to Cart</th>
+                        <th>Details</th>
                     </tr>
                 </thead>
                 <tbody>

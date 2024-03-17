@@ -211,7 +211,7 @@
 
         function toCustomerTableRow(): string {
             $row = $this->toTableRow();
-            return $row . '<td><a href="' . URL_ROOT_PATH . '/customer/products/details.php?id=' . $this->id . '">Add to Cart</a></td>';
+            return $row . '<td><a href="' . URL_ROOT_PATH . '/customer/products/details.php?id=' . $this->id . '">Details</a></td>';
         }
 
         function toDetails(): string {

@@ -37,6 +37,7 @@
             <h2>Admin Home</h2>
             <a href="./users/new">New User</a>
             <a href="./users/">View and Update Users</a>
+            <a href="../customer/products">View Products and Feedbacks</a>
         </div>
     </body>
 </html>

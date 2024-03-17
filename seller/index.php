@@ -38,6 +38,7 @@
             <a href="./products/new">New Product</a>
             <a href="./products/">View and Update Products</a>
             <a href="./loyalty-card/new">New Loyalty Card</a>
+            <a href="../customer/products">View Products and Feedbacks</a>
         </div>
     </body>
 </html>
