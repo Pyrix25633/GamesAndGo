@@ -4,7 +4,9 @@
         ci sono metodi per la selezione e l'aggiornamento
         e per la creazione di form vuoti o precompilati
         e di tabelle con una struttura modulare grazie alla
-        programmazione ad oggetti
+        programmazione ad oggetti.
+
+        Tutti gli altri file nella cartella 'database' seguono la stessa logica
     */
 
     class User {

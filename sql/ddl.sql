@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS Videogames (
     title VARCHAR(56) NOT NULL,
     plot TEXT NOT NULL, -- Trama
     releaseYear SMALLINT NOT NULL, -- Anno di rilascio, es: 2013
+    -- Per sviluppi futuri: aggiungere il comparto giochi di cui fa parte, potrebbe essere opportuno
+    -- modellarlo come entità, non l'ho fatto per semplificare
     PRIMARY KEY (id),
     UNIQUE (title),
     FOREIGN KEY (id) REFERENCES Products(id)
@@ -43,6 +45,8 @@ CREATE TABLE IF NOT EXISTS Accessories (
     id INT NOT NULL,
     name VARCHAR(32) NOT NULL,
     type ENUM('AUDIO', 'VIDEO', 'INPUT'), -- Tipo accessorio
+    -- Per sviluppi futuri, alcuni accessori potrebbero essere compatibili solo con determinate
+    -- console, non l'ho fatto per semplificare
     PRIMARY KEY (id),
     UNIQUE (name),
     FOREIGN KEY (id) REFERENCES Products(id)
@@ -50,7 +54,7 @@ CREATE TABLE IF NOT EXISTS Accessories (
 
 -- Dato che la guida è di un videogioco, se la piattaforma vendesse solo guide
 -- di videogiochi presenti nel database si potrebbe aggiungere un attributo e
--- una chiave esterna, non l'ho fatto per semplicità
+-- una chiave esterna, non l'ho fatto per semplificare
 CREATE TABLE IF NOT EXISTS Guides (
     id INT NOT NULL,
     title VARCHAR(56) NOT NULL,
@@ -121,6 +125,7 @@ CREATE TABLE IF NOT EXISTS Sellers (
     UNIQUE (code)
 );
 
+-- Da approfindire eventuali dati aggiuntivi che si vogliono memorizzare dell'amministratore
 CREATE TABLE IF NOT EXISTS Admins (
     id INT NOT NULL,
     PRIMARY KEY (id),
@@ -162,7 +167,7 @@ CREATE TABLE IF NOT EXISTS Feedbacks (
 -- /////////
 -- Fornitori
 -- /////////
--- Dato che non hanno collegamenti con le altre entità
+-- Dato che nella traccia non hanno collegamenti espliciti con le altre entità
 -- non li ho implementati nell'applicazione, sarebbe opportuno
 -- contattare l'azienda e approfondire
 
@@ -194,7 +199,8 @@ CREATE TABLE IF NOT EXISTS Carts (
 
 -- Possono esserci più ProductsOnCarts con lo stesso id prodotto e carrello, non è un problema,
 -- nell'applicazione pronta per essere pubblicata si potrebbe impostare un vincolo
--- UNIQUE(productId, cartId) e modificare l'interazione utente sull'applicazione
+-- UNIQUE(productId, cartId) (derivante dalla chiave naturale di "Prodotti in carrelli") e
+-- modificare l'interazione utente sull'applicazione
 CREATE TABLE IF NOT EXISTS ProductsOnCarts (
     id INT AUTO_INCREMENT,
     productId INT NOT NULL,
@@ -220,7 +226,8 @@ CREATE TABLE IF NOT EXISTS Purchases (
 
 -- Possono esserci più ProductsOnPurchases con lo stesso id prodotto e acquisto, non è un problema,
 -- nell'applicazione pronta per essere pubblicata si potrebbe impostare un vincolo
--- UNIQUE(productId, purchaseId) e modificare l'interazione utente sull'applicazione
+-- UNIQUE(productId, purchaseId) (derivante dalla chiave naturale di "Prodotti in acquisti")
+-- e modificare l'interazione utente sull'applicazione
 -- Viene memorizzato anche il prezzo finale (con lo sconto applicato) per pezzo per motivi fiscali,
 -- sarebbe opportuno analizzare il problema con un commercialista e regolarizzare il database
 CREATE TABLE IF NOT EXISTS ProductsOnPurchases (

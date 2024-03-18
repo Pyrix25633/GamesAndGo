@@ -1,5 +1,16 @@
 <?php
 
+    /*
+        Insieme di classi per la gestione degli errori.
+        Se si verificano errori che non si possono risolvere,
+        una delle classi che estendono Response viene instanziata
+        e lanciata come eccezione, in ogni file php c'è un try-catch,
+        nel catch viene chiamato il metodo send, che per BadRequestResponse
+        genererà una risposta HTTP simile a:
+        HTTP/<versione> 400
+        Location: <percorso>/error.php?code=400&message=Bad%20Request&field=username
+    */
+
     class Response extends Exception {
         private int $httpCode;
         private string $httpMessage;

@@ -1,4 +1,5 @@
 <?php
+    // Insieme di costanti utilizzate in varie parti dell'applicazione
     define('URL_ROOT_PATH', getUrlBasePath());
     class Settings {
         public const DB_SERVER = '127.0.0.1';
