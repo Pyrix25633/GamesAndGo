@@ -299,6 +299,9 @@
     }
 
     class Customer extends User {
+        public string $addressState;
+        public string $addressCityName;
+        public string $addressCityPostalCode;
         public string $addressStreetType;
         public string $addressStreetName;
         public int $addressHouseNumber;
@@ -306,10 +309,13 @@
         public int $phoneNumber;
         public string $emailAddress;
 
-        function __construct(User $user, string $addressStreetType, string $addressStreetName, int $addressHouseNumber,
-                             int $phoneNumberPrefix, int $phoneNumber, string $emailAddress) {
+        function __construct(User $user, string $addressState, string $addressCityName, string $addressCityPostalCode, string $addressStreetType,
+                             string $addressStreetName, int $addressHouseNumber, int $phoneNumberPrefix, int $phoneNumber, string $emailAddress) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
+            $this->addressState = $addressState;
+            $this->addressCityName = $addressCityName;
+            $this->addressCityPostalCode = $addressCityPostalCode;
             $this->addressStreetType = $addressStreetType;
             $this->addressStreetName = $addressStreetName;
             $this->addressHouseNumber = $addressHouseNumber;
@@ -363,6 +369,9 @@
         static function fromForm(Validator &$validator): Customer {
             $user = parent::userFromForm($validator, UserType::CUSTOMER);
             return new Customer($user,
+                                $validator->getState('state'),
+                                $validator->getNonEmptyString('city-name'),
+                                $validator->getNonEmptyString('city-postal-code'),
                                 $validator->getNonEmptyString('street-type'),
                                 $validator->getNonEmptyString('street-name'),
                                 $validator->getPositiveInt('house-number'),
@@ -377,11 +386,13 @@
                 parent::insert($connection);
                 $sql = "
                     INSERT INTO Customers
-                    (id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress)
-                    VALUES (?, ?, ?, ?, ?, ?, ?);
+                    (id, addressState, addressCityName, addressCityPostalCode, addressStreetType, addressStreetName, addressHouseNumber,
+                        phoneNumberPrefix, phoneNumber, emailAddress)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 ";
                 $statement = $connection->prepare($sql);
-                $statement->bind_param("issiiis", $this->id, $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                $statement->bind_param("isssssiiis", $this->id, $this->addressState, $this->addressCityName, $this->addressCityPostalCode,
+                    $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
                     $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress);
                 $statement->execute();
                 $statement->close();
@@ -398,11 +409,13 @@
                 parent::update($connection);
                 $sql = "
                     UPDATE Customers
-                    SET addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?, phoneNumberPrefix = ?, phoneNumber = ?, emailAddress = ?
+                    SET addressState = ?, addressCityName = ?, addressCityPostalCode = ?, addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?,
+                        phoneNumberPrefix = ?, phoneNumber = ?, emailAddress = ?
                     WHERE id = ?;
                 ";
                 $statement = $connection->prepare($sql);
-                $statement->bind_param("ssiiisi", $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                $statement->bind_param("sssssiiisi", $this->addressState, $this->addressCityName, $this->addressCityPostalCode,
+                    $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
                     $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->id);
                 $statement->execute();
                 $statement->close();
@@ -415,12 +428,16 @@
 
         static function selectRow(mysqli $connection, int $id): array {
             return parent::selectRowResult($connection, $id, '
-                SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress
+                SELECT id, addressState, addressCityName, addressCityPostalCode, addressStreetType, addressStreetName, addressHouseNumber,
+                    phoneNumberPrefix, phoneNumber, emailAddress
                 FROM Customers');
         }
 
         static function fromRow(array $row): Customer {
             return new Customer(parent::fromRow($row),
+                                $row['addressState'],
+                                $row['addressCityName'],
+                                $row['addressCityPostalCode'],
                                 $row['addressStreetType'],
                                 $row['addressStreetName'],
                                 intval($row['addressHouseNumber']),
@@ -431,6 +448,9 @@
     }
 
     class Seller extends User {
+        public string $addressState;
+        public string $addressCityName;
+        public string $addressCityPostalCode;
         public string $addressStreetType;
         public string $addressStreetName;
         public int $addressHouseNumber;
@@ -440,10 +460,14 @@
         public int $code;
         public SellerRole $role;
 
-        function __construct(User $user, string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
+        function __construct(User $user, string $addressState, string $addressCityName, string $addressCityPostalCode,
+                             string $addressStreetType, string $addressStreetName, string $addressHouseNumber,
                              int $phoneNumberPrefix, int $phoneNumber, string $emailAddress, int $code, SellerRole $role) {
             foreach($user as $property => $value)
                 $this->{$property} = $value;
+            $this->addressState = $addressState;
+            $this->addressCityName = $addressCityName;
+            $this->addressCityPostalCode = $addressCityPostalCode;
             $this->addressStreetType = $addressStreetType;
             $this->addressStreetName = $addressStreetName;
             $this->addressHouseNumber = $addressHouseNumber;
@@ -507,6 +531,9 @@
         static function fromForm(Validator &$validator): Seller {
             $user = parent::userFromForm($validator, UserType::SELLER);
             return new Seller($user,
+                              $validator->getState('state'),
+                              $validator->getNonEmptyString('city-name'),
+                              $validator->getNonEmptyString('city-postal-code'),
                               $validator->getNonEmptyString('street-type'),
                               $validator->getNonEmptyString('street-name'),
                               $validator->getPositiveInt('house-number'),
@@ -523,12 +550,14 @@
                 parent::insert($connection);
                 $sql = "
                     INSERT INTO Sellers
-                    (id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role)
+                    (id, addressState, addressCityName, addressCityPostalCode, addressStreetType, addressStreetName, addressHouseNumber,
+                        phoneNumberPrefix, phoneNumber, emailAddress, code, role)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
                 ";
                 $statement = $connection->prepare($sql);
                 $formattedRole = $this->role->toMysqlString();
-                $statement->bind_param("issiiisis", $this->id, $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                $statement->bind_param("isssssiiisis", $this->id, $this->addressState, $this->addressCityName, $this->addressCityPostalCode,
+                    $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
                     $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->code, $formattedRole);
                 $statement->execute();
                 $statement->close();
@@ -545,13 +574,14 @@
                 parent::update($connection);
                 $sql = "
                     UPDATE Sellers
-                    SET addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?, phoneNumberPrefix = ?,
-                        phoneNumber = ?, emailAddress = ?, code = ?, role = ?
+                    SET addressState = ?, addressCityName = ?, addressCityPostalCode = ?, addressStreetType = ?, addressStreetName = ?, addressHouseNumber = ?,
+                        phoneNumberPrefix = ?, phoneNumber = ?, emailAddress = ?, code = ?, role = ?
                     WHERE id = ?;
                 ";
                 $statement = $connection->prepare($sql);
                 $formattedRole = $this->role->toMysqlString();
-                $statement->bind_param("ssiiisisi", $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
+                $statement->bind_param("sssssiiisisi", $this->addressState, $this->addressCityName, $this->addressCityPostalCode,
+                    $this->addressStreetType, $this->addressStreetName, $this->addressHouseNumber,
                     $this->phoneNumberPrefix, $this->phoneNumber, $this->emailAddress, $this->code, $formattedRole, $this->id);
                 $statement->execute();
                 $statement->close();
@@ -564,20 +594,24 @@
 
         static function selectRow(mysqli $connection, int $id): array {
             return parent::selectRowResult($connection, $id, '
-                SELECT id, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix, phoneNumber, emailAddress, code, role
+                SELECT id, addressState, addressCityName, addressCityPostalCode, addressStreetType, addressStreetName, addressHouseNumber, phoneNumberPrefix,
+                    phoneNumber, emailAddress, code, role
                 FROM Sellers');
         }
 
         static function fromRow(array $row): Seller {
             return new Seller(parent::fromRow($row),
-                                $row['addressStreetType'],
-                                $row['addressStreetName'],
-                                intval($row['addressHouseNumber']),
-                                intval($row['phoneNumberPrefix']),
-                                intval($row['phoneNumber']),
-                                $row['emailAddress'],
-                                intval($row['code']),
-                                SellerRole::fromMysqlString($row['role']));
+                              $row['addressState'],
+                              $row['addressCityName'],
+                              $row['addressCityPostalCode'],
+                              $row['addressStreetType'],
+                              $row['addressStreetName'],
+                              intval($row['addressHouseNumber']),
+                              intval($row['phoneNumberPrefix']),
+                              intval($row['phoneNumber']),
+                              $row['emailAddress'],
+                              intval($row['code']),
+                              SellerRole::fromMysqlString($row['role']));
         }
     }
 

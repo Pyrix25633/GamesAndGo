@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS Guides (
 -- //////
 -- Utenti
 -- //////
+-- Potrebbe essere opportuno modellare delle entità per il documento, l'indirizzo e i contatti
 
 CREATE TABLE IF NOT EXISTS Users (
     id INT AUTO_INCREMENT,
@@ -92,6 +93,9 @@ CREATE TABLE IF NOT EXISTS Users (
 CREATE TABLE IF NOT EXISTS Customers (
     id INT NOT NULL,
     -- Indirizzo
+    addressState CHAR(2) NOT NULL,
+    addressCityName VARCHAR(24) NOT NULL,
+    addressCityPostalCode VARCHAR(12) NOT NULL,
     addressStreetType VARCHAR(8) NOT NULL,
     addressStreetName VARCHAR(32) NOT NULL,
     addressHouseNumber SMALLINT NOT NULL,
@@ -107,6 +111,9 @@ CREATE TABLE IF NOT EXISTS Customers (
 CREATE TABLE IF NOT EXISTS Sellers (
     id INT NOT NULL,
     -- Indirizzo
+    addressState CHAR(2) NOT NULL,
+    addressCityName VARCHAR(24) NOT NULL,
+    addressCityPostalCode VARCHAR(12) NOT NULL,
     addressStreetType VARCHAR(8) NOT NULL,
     addressStreetName VARCHAR(32) NOT NULL,
     addressHouseNumber SMALLINT NOT NULL,
